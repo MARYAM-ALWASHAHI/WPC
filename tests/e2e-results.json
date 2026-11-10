@@ -1,0 +1,158 @@
+[
+ [
+  "PASS",
+  "Dashboard loads with live figures",
+  772
+ ],
+ [
+  "PASS",
+  "Dashboard drill-down opens the filtered item list",
+  62
+ ],
+ [
+  "PASS",
+  "Item list sorts and paginates",
+  121
+ ],
+ [
+  "PASS",
+  "New item: validation blocks an empty form",
+  116
+ ],
+ [
+  "PASS",
+  "New item: duplicate warning, then create anyway with a unique reference",
+  427
+ ],
+ [
+  "PASS",
+  "Roster: add committee member",
+  327
+ ],
+ [
+  "PASS",
+  "New meeting brings forward all open items and roster signers",
+  140
+ ],
+ [
+  "PASS",
+  "Workflow: issue agenda, start meeting",
+  467
+ ],
+ [
+  "PASS",
+  "Live minutes autosave on leaving the field",
+  1296
+ ],
+ [
+  "PASS",
+  "Concurrent edit is detected and offers keep theirs / both / mine",
+  381
+ ],
+ [
+  "PASS",
+  "Action validation rejects a past due date, then accepts a valid one",
+  502
+ ],
+ [
+  "PASS",
+  "End meeting; circulation guard requires a signer",
+  428
+ ],
+ [
+  "PASS",
+  "Add signer and circulate v1 (frozen snapshot)",
+  614
+ ],
+ [
+  "PASS",
+  "Member requests a correction; secretary revises to v2",
+  760
+ ],
+ [
+  "PASS",
+  "Member signs v2; Chairman approves; secretary archives",
+  1231
+ ],
+ [
+  "PASS",
+  "Signed minutes do not close the item; closure needs actions done and evidence",
+  1783
+ ],
+ [
+  "PASS",
+  "Audit trail records the lifecycle",
+  19
+ ],
+ [
+  "PASS",
+  "Export hands a JSON file to the viewer",
+  228
+ ],
+ [
+  "PASS",
+  "Refused write shows a permission message and changes nothing",
+  443
+ ],
+ [
+  "PASS",
+  "No horizontal page scroll at 390px on dashboard",
+  412
+ ],
+ [
+  "PASS",
+  "No horizontal page scroll at 390px on items",
+  407
+ ],
+ [
+  "PASS",
+  "No horizontal page scroll at 390px on meetings",
+  406
+ ],
+ [
+  "PASS",
+  "No horizontal page scroll at 820px on dashboard",
+  411
+ ],
+ [
+  "PASS",
+  "Accessibility (axe, WCAG 2 AA) on dashboard",
+  1031
+ ],
+ [
+  "PASS",
+  "Accessibility (axe, WCAG 2 AA) on items",
+  699
+ ],
+ [
+  "PASS",
+  "Accessibility (axe, WCAG 2 AA) on meetings",
+  950
+ ],
+ [
+  "PASS",
+  "Accessibility (axe, WCAG 2 AA) on review",
+  604
+ ],
+ [
+  "PASS",
+  "Accessibility (axe, WCAG 2 AA) on records",
+  775
+ ],
+ [
+  "PASS",
+  "Accessibility (axe, WCAG 2 AA) on admin",
+  663
+ ],
+ [
+  "PASS",
+  "Performance: dashboard renders 300 items under 300 ms",
+  35,
+  "10 ms"
+ ],
+ [
+  "PASS",
+  "No console or page errors",
+  0
+ ]
+]
