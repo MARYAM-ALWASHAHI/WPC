@@ -51,6 +51,8 @@ function render() {
   const ae = document.activeElement;
   if (ae && ((ae.dataset?.minute && ae.tagName !== "SELECT") || ae.closest?.(".inline-form") || ae.id === "member-q" || ae.id === "roster-q")) { deferred = true; return; }
   deferred = false;
+  // Resolve committee names early so forms opened later (e.g. the Chairman picker) show names, not placeholders.
+  { const r = state.data.roster || {}; [r.chairman, ...(r.members || [])].forEach(u => u && name(u)); }
   const c = ctx();
   renderShell(c);
   const main = document.getElementById("main");
