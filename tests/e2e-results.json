@@ -2,22 +2,22 @@
  [
   "PASS",
   "Dashboard loads with live figures",
-  604
+  845
  ],
  [
   "PASS",
   "Dashboard drill-down opens the filtered item list",
-  133
+  143
  ],
  [
   "PASS",
   "Item list sorts and paginates",
-  245
+  231
  ],
  [
   "PASS",
   "New item: validation blocks an empty form",
-  131
+  142
  ],
  [
   "PASS",
@@ -27,107 +27,107 @@
  [
   "PASS",
   "Roster: add committee member",
-  460
+  458
  ],
  [
   "PASS",
   "New meeting brings forward all open items and roster signers",
-  170
+  168
  ],
  [
   "PASS",
   "Workflow: issue agenda, start meeting",
-  575
+  608
  ],
  [
   "PASS",
   "Live minutes autosave on leaving the field",
-  1967
+  1945
  ],
  [
   "PASS",
   "Structured outcome and positions approved are saved per item",
-  1158
+  1113
  ],
  [
   "PASS",
   "Attendance is recorded and quorum shows only when set",
-  340
+  343
  ],
  [
   "PASS",
   "Concurrent edit is detected and offers keep theirs / both / mine",
-  490
+  522
  ],
  [
   "PASS",
   "Action validation rejects a past due date, then accepts a valid one",
-  538
+  1439
  ],
  [
   "PASS",
   "End meeting; circulation guard requires a signer",
-  466
+  474
  ],
  [
   "PASS",
   "Add signer and circulate v1 (frozen snapshot)",
-  672
+  631
  ],
  [
   "PASS",
   "Minutes download as a Word document",
-  229
+  239
  ],
  [
   "PASS",
   "Member requests a correction; secretary revises to v2",
-  846
+  812
  ],
  [
   "PASS",
   "Member signs v2; Chairman approves; secretary archives",
-  1274
+  1281
  ],
  [
   "PASS",
   "Signed minutes do not close the item; closure needs actions done and evidence",
-  3240
+  3276
  ],
  [
   "PASS",
   "Secretary attaches a PDF to an item; unsupported types are refused with advice",
-  735
+  743
  ],
  [
   "PASS",
   "Audit trail records the lifecycle",
-  18
+  21
  ],
  [
   "PASS",
   "Export hands a JSON file to the viewer",
-  468
+  431
  ],
  [
   "PASS",
   "Refused write shows a permission message and changes nothing",
-  5558
+  5911
  ],
  [
   "PASS",
   "Secretary accepts a department request into a referenced item",
-  6757
+  6777
  ],
  [
   "PASS",
   "Requester (Contributor, not on roster) submits a request and sees only own requests",
-  1104
+  1009
  ],
  [
   "PASS",
   "No horizontal page scroll at 390px on dashboard",
-  420
+  417
  ],
  [
   "PASS",
@@ -137,58 +137,58 @@
  [
   "PASS",
   "No horizontal page scroll at 390px on meetings",
-  408
+  410
  ],
  [
   "PASS",
   "No horizontal page scroll at 390px on requests",
-  405
+  407
  ],
  [
   "PASS",
   "No horizontal page scroll at 820px on dashboard",
-  416
+  418
  ],
  [
   "PASS",
   "Accessibility (axe, WCAG 2 AA) on dashboard",
-  894
+  841
  ],
  [
   "PASS",
   "Accessibility (axe, WCAG 2 AA) on items",
-  715
+  729
  ],
  [
   "PASS",
   "Accessibility (axe, WCAG 2 AA) on meetings",
-  974
+  881
  ],
  [
   "PASS",
   "Accessibility (axe, WCAG 2 AA) on requests",
-  610
+  632
  ],
  [
   "PASS",
   "Accessibility (axe, WCAG 2 AA) on review",
-  672
+  615
  ],
  [
   "PASS",
   "Accessibility (axe, WCAG 2 AA) on records",
-  714
+  742
  ],
  [
   "PASS",
   "Accessibility (axe, WCAG 2 AA) on admin",
-  681
+  716
  ],
  [
   "PASS",
   "Performance: dashboard renders 300 items under 300 ms",
-  34,
-  "15 ms"
+  51,
+  "22 ms"
  ],
  [
   "PASS",

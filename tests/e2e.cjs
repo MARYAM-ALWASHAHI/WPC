@@ -261,6 +261,8 @@ const expect = (cond, msg) => { if (!cond) throw new Error(msg); };
       expect((await p2.textContent(".u-role")).includes("Requester"), "role Requester");
       expect(!(await p2.textContent("main")).includes("Safety Officer"), "cannot see others' requests");
       await p2.click('[data-action="request.new"]');
+      const scroll = await p2.evaluate(() => { const pn = document.querySelector(".panel"); pn.scrollTop = 1e6; const r = document.querySelector('.panel [type="submit"]').getBoundingClientRect(); return { oy: getComputedStyle(pn).overflowY, visible: r.bottom <= innerHeight && r.top >= 0 }; });
+      expect(/auto|scroll/.test(scroll.oy) && scroll.visible, `submit button not reachable: ${JSON.stringify(scroll)}`);
       await p2.fill("#title", "Two lab analysts for night shift"); await p2.selectOption("#dept", "Quality"); await p2.fill("#owner", "Quality Manager");
       await p2.fill("#request", "Two analysts for the new night shift sampling."); await p2.fill("#hcRequested", "2");
       await p2.click('.panel [type="submit"]'); await p2.waitForTimeout(300);

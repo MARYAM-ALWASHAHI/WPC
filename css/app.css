@@ -605,7 +605,11 @@ label.chk input { height: auto; }
   border-left: 1px solid var(--line);
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
   box-shadow: -18px 0 32px rgba(2, 6, 10, 0.35);
 }
 .panel.lg { width: min(760px, 100%); }
