@@ -2,193 +2,193 @@
  [
   "PASS",
   "Dashboard loads with live figures",
-  745
+  908
  ],
  [
   "PASS",
   "Dashboard drill-down opens the filtered item list",
-  71
+  130
  ],
  [
   "PASS",
   "Item list sorts and paginates",
-  107
+  213
  ],
  [
   "PASS",
   "New item: validation blocks an empty form",
-  101
+  145
  ],
  [
   "PASS",
   "New item: duplicate warning, then create anyway with a unique reference",
-  464
+  470
  ],
  [
   "PASS",
   "Roster: add committee member",
-  325
+  417
  ],
  [
   "PASS",
   "New meeting brings forward all open items and roster signers",
-  150
+  176
  ],
  [
   "PASS",
   "Workflow: issue agenda, start meeting",
-  441
+  535
  ],
  [
   "PASS",
   "Live minutes autosave on leaving the field",
-  1294
+  2982
  ],
  [
   "PASS",
   "Structured outcome and positions approved are saved per item",
-  1100
+  1115
  ],
  [
   "PASS",
   "Attendance is recorded and quorum shows only when set",
-  335
+  353
  ],
  [
   "PASS",
   "Concurrent edit is detected and offers keep theirs / both / mine",
-  396
+  526
  ],
  [
   "PASS",
   "Action validation rejects a past due date, then accepts a valid one",
-  453
+  1420
  ],
  [
   "PASS",
   "End meeting; circulation guard requires a signer",
-  394
+  475
  ],
  [
   "PASS",
   "Add signer and circulate v1 (frozen snapshot)",
-  599
+  652
  ],
  [
   "PASS",
   "Minutes download as a Word document",
-  236
+  238
  ],
  [
   "PASS",
   "Member requests a correction; secretary revises to v2",
-  780
+  801
  ],
  [
   "PASS",
   "Member signs v2; Chairman approves; secretary archives",
-  1243
+  1281
  ],
  [
   "PASS",
   "Signed minutes do not close the item; closure needs actions done and evidence",
-  3129
+  3292
  ],
  [
   "PASS",
   "Secretary attaches a PDF to an item; unsupported types are refused with advice",
-  731
+  742
  ],
  [
   "PASS",
   "Audit trail records the lifecycle",
-  28
+  32
  ],
  [
   "PASS",
   "Export hands a JSON file to the viewer",
-  224
+  446
  ],
  [
   "PASS",
   "Refused write shows a permission message and changes nothing",
-  2845
+  5565
  ],
  [
   "PASS",
   "Secretary accepts a department request into a referenced item",
-  3606
+  6753
  ],
  [
   "PASS",
   "Requester (Contributor, not on roster) submits a request and sees only own requests",
-  1057
+  1015
  ],
  [
   "PASS",
   "No horizontal page scroll at 390px on dashboard",
-  416
+  424
  ],
  [
   "PASS",
   "No horizontal page scroll at 390px on items",
-  406
- ],
- [
-  "PASS",
-  "No horizontal page scroll at 390px on meetings",
   407
  ],
  [
   "PASS",
+  "No horizontal page scroll at 390px on meetings",
+  408
+ ],
+ [
+  "PASS",
   "No horizontal page scroll at 390px on requests",
-  405
+  407
  ],
  [
   "PASS",
   "No horizontal page scroll at 820px on dashboard",
-  414
+  419
  ],
  [
   "PASS",
   "Accessibility (axe, WCAG 2 AA) on dashboard",
-  875
+  815
  ],
  [
   "PASS",
   "Accessibility (axe, WCAG 2 AA) on items",
-  707
+  681
  ],
  [
   "PASS",
   "Accessibility (axe, WCAG 2 AA) on meetings",
-  947
+  903
  ],
  [
   "PASS",
   "Accessibility (axe, WCAG 2 AA) on requests",
-  629
+  631
  ],
  [
   "PASS",
   "Accessibility (axe, WCAG 2 AA) on review",
-  625
+  612
  ],
  [
   "PASS",
   "Accessibility (axe, WCAG 2 AA) on records",
-  805
+  716
  ],
  [
   "PASS",
   "Accessibility (axe, WCAG 2 AA) on admin",
-  736
+  680
  ],
  [
   "PASS",
   "Performance: dashboard renders 300 items under 300 ms",
-  39,
-  "10 ms"
+  51,
+  "22 ms"
  ],
  [
   "PASS",
