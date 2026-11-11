@@ -5,7 +5,7 @@
 import {
   CATEGORIES, DEPARTMENTS, MEETING_STATES, ITEM_STAGES, ACTION_LABELS, PERMISSIONS, ROLES,
   meetingPhase, signatureState, sigFor, awaitingSignature, itemStage, isItemOpen, isActionOpen, isOverdue,
-  canEditAgenda, canEditMinutes, daysBetween, diffSnapshots,
+  canEditAgenda, canEditMinutes, daysBetween, diffSnapshots, buildSnapshot,
   OUTCOMES, BUDGETED, ATTENDANCE, charterKpis, outcomeCounts, headcountTotals, latestOutcome, quorumState, findDuplicates,
 } from "./domain.js";
 import { esc, icon, badge, btn, pageHeader, dataTable, field, msg, fmtDate, fmtDateTime, monthLabel, panelHead } from "./ui.js";
@@ -50,6 +50,43 @@ const readOnlyNote = ctx => ctx.role === "Secretary" ? "" : msg("info", `You are
 /* ====================================================================== */
 /* Dashboard and analytics                                               */
 /* ====================================================================== */
+/** Chart colours by category: fixed order, never by rank. Checked for colour-blind separation. */
+export const CAT_COLORS = { "Manpower requirement": "#2468b8", "Expatriate contract renewal": "#12a594", "New contractor request": "#e09a00", "Organisation development": "#6250d6", "Other": "#d95f8f" };
+const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
+const dayPart = iso => { const d = new Date(iso + "T00:00:00"); return { d: String(d.getDate()).padStart(2, "0"), mon: d.toLocaleDateString("en-GB", { month: "short" }), wd: d.toLocaleDateString("en-GB", { weekday: "long" }), y: d.getFullYear() }; };
+export const dateBlock = iso => { if (!iso) return ""; const p = dayPart(iso); return `<div class="dateblock" aria-hidden="true"><span class="db-m">${esc(p.mon)}</span><span class="db-d">${p.d}</span><span class="db-y">${p.y}</span></div>`; };
+const whenText = (iso, today) => { const n = daysBetween(today, iso); return n === 0 ? "Today" : n === 1 ? "Tomorrow" : n > 1 ? `In ${n} days` : n === -1 ? "Yesterday" : `${-n} days ago`; };
+/** The meeting the committee is working towards: the earliest one not yet held, else the latest one still in progress. */
+export function nextMeeting(ctx) {
+  const all = meetingsArr(ctx).filter(m => m.status !== "archived");
+  const ahead = all.filter(m => ["preparation", "agenda_issued", "in_session"].includes(m.status)).sort((a, b) => (a.date || "").localeCompare(b.date || ""));
+  return ahead.find(m => (m.date || "") >= ctx.today) || ahead[ahead.length - 1] || all[0] || null;
+}
+const agendaTotals = (ctx, m) => { const its = m.agenda.map(id => ctx.d.items[id]).filter(Boolean); return { n: its.length, hc: its.reduce((s, i) => s + (Number(i.hcRequested) || 0), 0), cost: its.reduce((s, i) => s + (Number(i.annualCost) || 0), 0), decided: its.filter(i => (ctx.d.minutes[`${m.id}__${i.id}`] || {}).outcome).length }; };
+
+/** What this person should do next, most urgent first. */
+function attention(ctx) {
+  const out = [], sec = ctx.role === "Secretary";
+  const row = (tone, ic, title, sub, attrs) => out.push(`<li><button type="button" class="todo ${tone}" ${attrs}><span class="todo-ic">${icon(ic)}</span><span class="todo-t"><b>${title}</b><span>${sub}</span></span>${icon("chevron")}</button></li>`);
+  for (const t of myReviewTasks(ctx)) row("warn", "sign", t.role === "chairman" ? `Approve the minutes of ${esc(t.m.title)}` : `Sign the minutes of ${esc(t.m.title)}`, `Version ${t.m.version} is waiting for you`, `data-action="meeting.open" data-id="${esc(t.m.id)}"`);
+  if (sec) {
+    const nr = pendingRequests(ctx).length;
+    if (nr) row("info", "inbox", `${plural(nr, "new department request")}`, "Accept onto an agenda, or return for clarification", `data-action="nav.go" data-to="requests"`);
+    for (const m of meetingsArr(ctx)) {
+      const s = signatureState(m, ctx.d.sigs), ph = meetingPhase(m, ctx.d.sigs).key;
+      if (ph === "correction") row("bad", "alert", `Correction requested on ${esc(m.title)}`, "Revise the minutes and circulate a new version", `data-action="meeting.open" data-id="${esc(m.id)}"`);
+      else if (ph === "signing") row("warn", "sign", `${s.signed} of ${s.total} signatures on ${esc(m.title)}`, `Waiting for ${esc(s.rows.filter(r => !r.sig).map(r => ctx.name(r.user)).slice(0, 3).join(", "))}`, `data-action="meeting.open" data-id="${esc(m.id)}"`);
+      else if (ph === "approved" || ph === "signed") row("ok", "archive", `${esc(m.title)} is approved`, "Archive the final minutes", `data-action="meeting.open" data-id="${esc(m.id)}"`);
+      else if (m.status === "drafting") { const t = agendaTotals(ctx, m); row("info", "edit", `Finish the minutes of ${esc(m.title)}`, t.decided < t.n ? `${t.n - t.decided} of ${t.n} items still need an outcome` : "All outcomes recorded. Circulate for signature", `data-action="meeting.open" data-id="${esc(m.id)}"`); }
+    }
+    const unsched = itemsArr(ctx).filter(i => !i.archived && stageOf(ctx, i) === "Submitted").length;
+    if (unsched) row("neutral", "items", `${plural(unsched, "item")} not on any agenda`, "Add to the next meeting", `data-action="nav.items" data-filter='{"stage":"Submitted","status":""}'`);
+  }
+  const od = actionsArr(ctx).filter(a => isOverdue(a, ctx.today)).length;
+  if (od) row("bad", "clock", `${plural(od, "overdue action")}`, "Past the due date and not done", `data-action="nav.actions" data-filter='{"overdue":true}'`);
+  return out;
+}
+
 export function dashboard(ctx) {
   const items = itemsArr(ctx).filter(i => !i.archived);
   const open = items.filter(isItemOpen), closed = items.filter(i => i.status === "CLOSED");
@@ -57,62 +94,94 @@ export function dashboard(ctx) {
   const overdue = acts.filter(a => isOverdue(a, ctx.today));
   const review = meetingsArr(ctx).filter(m => m.status === "circulated");
   const pendSigs = review.reduce((n, m) => n + signatureState(m, ctx.d.sigs).pending, 0);
-  const myTasks = myReviewTasks(ctx);
   const k = charterKpis(ctx.d, ctx.today);
   const hc = headcountTotals(ctx.d);
-  const newReqs = ctx.role === "Secretary" ? pendingRequests(ctx).length : 0;
+  const sec = ctx.role === "Secretary";
   const stageCounts = ITEM_STAGES.map(s => [s, items.filter(i => stageOf(ctx, i) === s).length]);
-  const outcomes = outcomeCounts(ctx.d);
-  const depts = DEPARTMENTS.map(d => [d, open.filter(i => i.dept === d).length, closed.filter(i => i.dept === d).length]).filter(r => r[1] + r[2]);
-  const kpi = (label, val, note, filter, tone = "") => `<button class="kpi ${tone}" data-action="nav.items" data-filter="${esc(JSON.stringify(filter))}"><span class="kpi-l">${esc(label)}</span><span class="kpi-v">${val}</span><span class="kpi-n">${esc(note)}</span></button>`;
+  const outcomes = outcomeCounts(ctx.d).filter(([, n]) => n);
+  const depts = DEPARTMENTS.map(d => [d, open.filter(i => i.dept === d).length]).filter(r => r[1]).sort((a, b) => b[1] - a[1]);
+  const nm = nextMeeting(ctx);
+  const todo = attention(ctx);
+  const F = f => esc(JSON.stringify(f));
+
+  /* next meeting */
+  const hero = nm ? (() => { const t = agendaTotals(ctx, nm), p = dayPart(nm.date), agenda = nm.agenda.map(id => ctx.d.items[id]).filter(Boolean);
+    return `<section class="hero" aria-label="Next meeting">
+      <div class="hero-main">
+        <span class="eyebrow">${["preparation", "agenda_issued"].includes(nm.status) ? "Next meeting" : "Meeting in progress"} · ${esc(whenText(nm.date, ctx.today))} · ${esc(meetingPhase(nm, ctx.d.sigs).label)}</span>
+        <div class="hero-top">${dateBlock(nm.date)}<div class="hero-tt"><h2>${esc(nm.title)}</h2>
+          <p class="hero-meta"><span>${icon("clock")}${esc(p.wd)}${nm.time ? `, ${esc(nm.time)}` : ""}</span>${nm.location ? `<span>${icon("pin")}${esc(nm.location)}</span>` : ""}<span class="ref">${esc(nm.ref)}</span></p></div></div>
+        <dl class="hero-stats"><div><dt>Items</dt><dd>${t.n}</dd></div><div><dt>Positions requested</dt><dd>${t.hc || "—"}</dd></div><div><dt>Annual cost</dt><dd>${t.cost ? esc(fmtOMR(t.cost)) : "—"}</dd></div></dl>
+        <div class="hero-actions"><button type="button" class="btn mark" data-action="meeting.open" data-id="${esc(nm.id)}">Open meeting${icon("next")}</button>${t.n ? `<button type="button" class="btn onnavy" data-action="present.open" data-id="${esc(nm.id)}">${icon("present")}<span>Present the agenda</span></button>` : ""}</div>
+      </div>
+      <ol class="hero-agenda" aria-label="Agenda">${agenda.slice(0, 5).map((it, i) => `<li><span class="ha-n">${i + 1}</span><span class="ha-t"><b>${esc(it.title)}</b><span>${esc(it.dept)}${it.hcRequested ? ` · ${plural(Number(it.hcRequested), "position")}` : ""}</span></span></li>`).join("")}${agenda.length > 5 ? `<li class="ha-more">and ${agenda.length - 5} more</li>` : ""}${agenda.length ? "" : `<li class="ha-more">The agenda is empty.</li>`}</ol>
+    </section>`; })()
+    : `<section class="hero empty"><div class="hero-main"><span class="eyebrow">Next meeting</span><h2>No meeting is planned</h2><p class="hero-meta"><span>Create the next monthly meeting and bring the open items forward.</span></p>${sec ? `<div class="hero-actions"><button type="button" class="btn mark" data-action="meeting.new">${icon("plus")}<span>New meeting</span></button></div>` : ""}</div></section>`;
+
+  /* key figures */
+  const kpi = (label, val, note, ic, attrs, tone = "") => `<button type="button" class="kpi ${tone}" ${attrs}><span class="kpi-ic">${icon(ic)}</span><span class="kpi-l">${esc(label)}</span><span class="kpi-v">${val}</span><span class="kpi-n">${esc(note)}</span></button>`;
   const stat = (label, val, note, tone = "") => `<div class="kpi static ${tone}"><span class="kpi-l">${esc(label)}</span><span class="kpi-v">${val}</span><span class="kpi-n">${esc(note)}</span></div>`;
-  const bars = (rows, filterOf, max = Math.max(1, ...rows.map(r => r[1]))) => `<div class="bars">${rows.map(([l, n]) => `<button class="bar-row" ${filterOf ? `data-action="nav.items" data-filter="${esc(JSON.stringify(filterOf(l)))}"` : ""} ${n && filterOf ? "" : "disabled"}><span class="bar-l" title="${esc(l)}">${esc(l)}</span><span class="bar-t"><span class="bar-f" style="width:${(n / max) * 100}%"></span></span><span class="bar-n">${n}</span></button>`).join("")}</div>`;
-  const upcoming = meetingsArr(ctx).filter(m => m.status !== "archived").slice().reverse().slice(0, 4);
-  return `${pageHeader({ title: "Committee overview", sub: `Live figures as of ${fmtDate(ctx.today)}. Each agenda item is counted once, however many meetings it went to.`,
-      actions: ctx.role === "Secretary" ? btn("New agenda item", "item.new", { ic: "plus" }) + btn("New meeting", "meeting.new", { kind: "primary", ic: "plus" }) : "" })}
-  ${myTasks.length ? msg("info", `<b>${myTasks.length} set${myTasks.length > 1 ? "s" : ""} of minutes need${myTasks.length > 1 ? "" : "s"} your ${myTasks.some(t => t.role === "chairman") ? "approval or " : ""}signature.</b>`, btn("Open review queue", "nav.go", { kind: "primary", data: { to: "review" } })) : ""}
-  ${newReqs ? msg("info", `<b>${newReqs} new request${newReqs > 1 ? "s" : ""} from departments</b> waiting to be accepted as agenda items.`, btn("Open requests", "nav.go", { kind: "primary", data: { to: "requests" } })) : ""}
+
+  /* pipeline */
+  const flow = `<ol class="flow">${stageCounts.filter(([s]) => s !== "Withdrawn").map(([s, n]) => `<li><button type="button" class="flow-b ${n ? "" : "zero"}" data-action="nav.items" data-filter="${F({ stage: s, status: "" })}" ${n ? "" : "disabled"} aria-label="${n} ${esc(s)}"><b>${n}</b><span>${esc(s)}</span></button></li>`).join("")}</ol>`;
+
+  /* items by category: donut + legend (the legend carries the numbers, so colour is never the only cue) */
+  const cats = Object.keys(CATEGORIES).map(c => ({ c, o: open.filter(i => i.category === c), cl: closed.filter(i => i.category === c).length })).map(x => ({ ...x, n: x.o.length + x.cl }));
+  const total = cats.reduce((s, x) => s + x.n, 0);
+  const R = 52, C = 2 * Math.PI * R; let acc = 0;
+  const donut = `<svg class="donut" viewBox="0 0 140 140" role="img" aria-label="Items by category, ${total} in total"><circle cx="70" cy="70" r="${R}" fill="none" stroke="var(--surface-alt)" stroke-width="18"/>${total ? cats.filter(x => x.n).map(x => { const len = (x.n / total) * C, seg = `<circle cx="70" cy="70" r="${R}" fill="none" stroke="${CAT_COLORS[x.c]}" stroke-width="18" stroke-dasharray="${Math.max(0, len - 2).toFixed(2)} ${(C - Math.max(0, len - 2)).toFixed(2)}" stroke-dashoffset="${(-acc).toFixed(2)}" transform="rotate(-90 70 70)"><title>${esc(x.c)}: ${x.n}</title></circle>`; acc += len; return seg; }).join("") : ""}<text x="70" y="68" text-anchor="middle" class="donut-n">${total}</text><text x="70" y="86" text-anchor="middle" class="donut-l">items</text></svg>`;
+  const link = (n, f, c) => n ? `<button class="count-link" data-action="nav.items" data-filter="${F(f)}" aria-label="${n} ${esc(c)} items">${n}</button>` : `<span class="zero">0</span>`;
+  const legend = `<table class="legend"><thead><tr><th scope="col">Category</th><th scope="col" class="num">Open</th><th scope="col" class="num">Closed</th><th scope="col" class="num">Positions</th></tr></thead><tbody>${cats.map(x => `<tr><td><span class="sw" style="background:${CAT_COLORS[x.c]}"></span>${esc(x.c)}</td><td class="num">${link(x.o.length, { cat: x.c, status: "open" }, x.c)}</td><td class="num">${link(x.cl, { cat: x.c, status: "CLOSED" }, x.c)}</td><td class="num">${x.o.reduce((n, i) => n + (Number(i.hcRequested) || 0), 0) || "—"}</td></tr>`).join("")}</tbody></table>`;
+
+  /* decisions per meeting, last six */
+  const held = meetingsArr(ctx).filter(m => Object.values(ctx.d.minutes).some(mn => mn.meetingId === m.id && mn.outcome)).slice(0, 6).reverse().map(m => ({ m, n: m.agenda.filter(id => (ctx.d.minutes[`${m.id}__${id}`] || {}).outcome).length }));
+  const maxN = Math.max(1, ...held.map(x => x.n));
+  const cols = held.length ? `<div class="cols-chart" role="list">${held.map(x => `<button type="button" role="listitem" class="col" data-action="meeting.open" data-id="${esc(x.m.id)}" title="${esc(x.m.title)}: ${plural(x.n, "decision")}"><span class="col-v">${x.n}</span><span class="col-bar" style="height:${Math.max(6, Math.round(100 * x.n / maxN))}%"></span><span class="col-l">${esc(monthLabel((x.m.date || "").slice(0, 7)))}</span></button>`).join("")}</div>` : `<p class="empty">No decisions recorded yet.</p>`;
+  const maxO = Math.max(1, ...outcomes.map(r => r[1]));
+  const outBars = outcomes.length ? `<div class="bars">${outcomes.map(([l, n]) => `<div class="bar-row static"><span class="bar-l">${badge(l, outcomeTone(l))}</span><span class="bar-t"><span class="bar-f ${outcomeTone(l)}" style="width:${(n / maxO) * 100}%"></span></span><span class="bar-n">${n}</span></div>`).join("")}</div>` : `<p class="empty">No decisions recorded yet.</p>`;
+  const maxD = Math.max(1, ...depts.map(r => r[1]));
+
+  /* feeds */
+  const latest = Object.values(ctx.d.minutes).filter(mn => mn.outcome && ctx.d.meetings[mn.meetingId] && ctx.d.items[mn.itemId]).map(mn => ({ mn, m: ctx.d.meetings[mn.meetingId], it: ctx.d.items[mn.itemId] })).sort((a, b) => (b.m.date || "").localeCompare(a.m.date || "")).slice(0, 6);
+  const due = acts.filter(isActionOpen).sort((a, b) => (a.due || "").localeCompare(b.due || "")).slice(0, 6);
+
+  return `<header class="ph home-h"><div class="ph-row"><div class="ph-title"><h1>Committee home</h1><p class="sub">${esc(new Date(ctx.today + "T00:00:00").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" }))} · You are signed in as ${esc(ctx.role)}</p></div>
+    ${sec ? `<div class="ph-actions">${btn("New agenda item", "item.new", { ic: "plus" })}${btn("New meeting", "meeting.new", { kind: "primary", ic: "plus" })}</div>` : ""}</div></header>
+  <div class="home-top">${hero}
+    <section class="card attention"><div class="card-h"><h2>Needs your attention</h2>${todo.length ? `<span class="pill">${todo.length}</span>` : ""}</div>
+      ${todo.length ? `<ul class="todos">${todo.join("")}</ul>` : `<div class="all-clear">${icon("check")}<b>You are up to date</b><span>Nothing is waiting for you right now.</span></div>`}</section>
+  </div>
   <section class="kpi-strip" aria-label="Key figures">
-    ${kpi("Open items", open.length, `${hc.requested} position${hc.requested === 1 ? "" : "s"} requested on open items`, { status: "open" })}
-    ${kpi("Closed items", closed.length, "Follow-up complete, evidence recorded", { status: "CLOSED" })}
-    <button class="kpi ${overdue.length ? "bad" : ""}" data-action="nav.actions" data-filter='{"overdue":true}'><span class="kpi-l">Overdue actions</span><span class="kpi-v">${overdue.length}</span><span class="kpi-n">Past due date, not done</span></button>
-    ${kpi("Pending signatures", pendSigs, `Across ${review.length} set${review.length === 1 ? "" : "s"} of minutes under review`, { status: "", pending: true }, pendSigs ? "warn" : "")}
+    ${kpi("Open items", open.length, `${plural(hc.requested, "position")} requested in total`, "items", `data-action="nav.items" data-filter="${F({ status: "open" })}"`)}
+    ${kpi("Closed items", closed.length, "Follow-up complete, evidence recorded", "check", `data-action="nav.items" data-filter="${F({ status: "CLOSED" })}"`, "ok")}
+    ${kpi("Overdue actions", overdue.length, "Past due date, not done", "clock", `data-action="nav.actions" data-filter='{"overdue":true}'`, overdue.length ? "bad" : "")}
+    ${kpi("Pending signatures", pendSigs, `Across ${plural(review.length, "set")} of minutes under review`, "sign", `data-action="nav.items" data-filter="${F({ status: "", pending: true })}"`, pendSigs ? "warn" : "")}
   </section>
+  <section class="card"><div class="card-h"><h2>Where every item stands</h2><span class="hint">Each item is counted once. Select a stage to see its items.</span></div>${flow}</section>
+  <div class="cols-3">
+    <section class="card"><div class="card-h"><h2>Items by category</h2></div><div class="donut-wrap">${donut}${legend}</div></section>
+    <section class="card"><div class="card-h"><h2>Decisions per meeting</h2><span class="hint">Last ${held.length || 6} meetings</span></div>${cols}</section>
+  </div>
+  <div class="cols-2">
+    <section class="card"><div class="card-h"><h2>Decisions by outcome</h2><span class="hint">All meetings</span></div>${outBars}</section>
+    <section class="card"><div class="card-h"><h2>Open items by department</h2><span class="hint">Select a department</span></div>
+      ${depts.length ? `<div class="bars">${depts.map(([d, n]) => `<button class="bar-row" data-action="nav.items" data-filter="${F({ dept: d, status: "open" })}"><span class="bar-l">${esc(d)}</span><span class="bar-t"><span class="bar-f" style="width:${(n / maxD) * 100}%"></span></span><span class="bar-n">${n}</span></button>`).join("")}</div>` : `<p class="empty">No open items.</p>`}</section>
+  </div>
   <section class="card"><div class="card-h"><h2>Project charter measures</h2><span class="hint">From the WPC Process Automation charter</span></div>
     <div class="kpi-strip inner">
-      ${stat("Request to decision", k.cycleDays == null ? "—" : `${k.cycleDays} days`, k.decidedCount ? `Average over ${k.decidedCount} decided item${k.decidedCount > 1 ? "s" : ""}` : "No item decided yet")}
+      ${stat("Request to decision", k.cycleDays == null ? "—" : `${k.cycleDays} days`, k.decidedCount ? `Average over ${plural(k.decidedCount, "decided item")}` : "No item decided yet")}
       ${stat("Complete first time", k.firstTimePct == null ? "—" : `${k.firstTimePct}%`, "Decided without being returned for clarification")}
       ${stat("Open over 30 days", k.aged30, "Open items submitted more than 30 days ago", k.aged30 ? "warn" : "")}
-      ${stat("Positions approved", hc.approved, "Headcount in final decisions (approved, EXCO, circulation)")}
+      ${stat("Positions approved", hc.approved, "Headcount in final decisions")}
     </div>
     <p class="hint">Member satisfaction, the fourth charter measure, needs a survey and is not measured in WPC Hub.</p>
   </section>
   <div class="cols-2">
-    <section class="card"><div class="card-h"><h2>Decisions by outcome</h2><span class="hint">All meetings</span></div>${bars(outcomes, null)}</section>
-    <section class="card"><div class="card-h"><h2>Items by stage</h2><span class="hint">Select a stage to see its items</span></div>${bars(stageCounts, s => ({ stage: s, status: "" }))}</section>
-  </div>
-  <div class="cols-2">
-    <section class="card"><div class="card-h"><h2>Items by category</h2><span class="hint">Select a count to see the items</span></div>
-      <div class="table-scroll"><table class="grid compact"><thead><tr><th scope="col">Category</th><th scope="col" class="num">Open</th><th scope="col" class="num">Closed</th><th scope="col" class="num">Positions requested</th></tr></thead><tbody>
-      ${Object.keys(CATEGORIES).map(c => { const o = open.filter(i => i.category === c), cl = closed.filter(i => i.category === c).length;
-        const link = (n, f) => n ? `<button class="count-link" data-action="nav.items" data-filter="${esc(JSON.stringify(f))}" aria-label="${n} ${esc(c)} items">${n}</button>` : `<span class="zero">0</span>`;
-        return `<tr><td>${esc(c)}</td><td class="num">${link(o.length, { cat: c, status: "open" })}</td><td class="num">${link(cl, { cat: c, status: "CLOSED" })}</td><td class="num">${o.reduce((n, i) => n + (Number(i.hcRequested) || 0), 0) || "—"}</td></tr>`; }).join("")}
-      </tbody></table></div>
-    </section>
-    <section class="card"><div class="card-h"><h2>Age of open items</h2><span class="hint">Days since submission</span></div>${bars(k.ageBuckets, null)}</section>
-  </div>
-  <div class="cols-2">
-    <section class="card"><div class="card-h"><h2>Meetings in progress</h2>${btn("All meetings", "nav.go", { kind: "ghost", data: { to: "meetings" } })}</div>
-      ${upcoming.length ? `<div class="table-scroll"><table class="grid compact"><thead><tr><th scope="col">Meeting</th><th scope="col" class="num">Items</th><th scope="col">Status</th></tr></thead><tbody>${upcoming.map(m => `<tr><td><a href="#meetings" data-action="meeting.open" data-id="${esc(m.id)}">${esc(m.title)}</a><div class="hint">${fmtDate(m.date)}${m.time ? ` · ${esc(m.time)}` : ""}${m.location ? ` · ${esc(m.location)}` : ""}</div></td><td class="num">${m.agenda.length}</td><td>${phaseBadge(ctx, m)}</td></tr>`).join("")}</tbody></table></div>` : `<p class="empty">No open meetings. Create the next one from New meeting.</p>`}
-    </section>
-    <section class="card"><div class="card-h"><h2>Open items by department</h2></div>
-      ${depts.length ? `<div class="table-scroll"><table class="grid compact"><thead><tr><th scope="col">Department</th><th scope="col" class="num">Open</th><th scope="col" class="num">Closed</th></tr></thead><tbody>${depts.map(([d, o, c]) => `<tr><td>${esc(d)}</td><td class="num">${o ? `<button class="count-link" data-action="nav.items" data-filter="${esc(JSON.stringify({ dept: d, status: "open" }))}">${o}</button>` : 0}</td><td class="num">${c}</td></tr>`).join("")}</tbody></table></div>` : `<p class="empty">No items yet.</p>`}
-    </section>
-  </div>
-  <section class="card"><div class="card-h"><h2>Overdue follow-up actions</h2>${overdue.length ? btn("View all actions", "nav.go", { kind: "ghost", data: { to: "actions" } }) : ""}</div>
-    ${overdue.length ? `<div class="table-scroll"><table class="grid compact"><thead><tr><th scope="col">Item</th><th scope="col">Action</th><th scope="col">Responsible</th><th scope="col">Due</th><th scope="col">Status</th></tr></thead><tbody>${overdue.sort((a, b) => a.due.localeCompare(b.due)).slice(0, 8).map(a => { const it = ctx.d.items[a.itemId];
-      return `<tr class="row-bad"><td>${it ? refLink(it) : "—"}</td><td>${esc(a.text)}</td><td>${esc(a.owner)}</td><td class="num">${fmtDate(a.due)}</td><td>${actionBadge(a, ctx.today)}</td></tr>`; }).join("")}</tbody></table></div>` : `<p class="empty">No overdue actions.</p>`}
-  </section>`;
+    <section class="card"><div class="card-h"><h2>Latest decisions</h2>${btn("All reports", "nav.go", { kind: "ghost", data: { to: "reports" } })}</div>
+      ${latest.length ? `<ul class="feed">${latest.map(x => `<li><div class="feed-h">${badge(x.mn.outcome, outcomeTone(x.mn.outcome))}<span class="hint">${fmtDate(x.m.date)}</span></div><a href="#items" data-action="item.open" data-id="${esc(x.it.id)}">${esc(x.it.title)}</a><span class="hint"><span class="ref">${esc(x.it.ref)}</span> · ${esc(x.it.dept)}${x.mn.hcApproved ? ` · ${plural(Number(x.mn.hcApproved), "position")} approved` : ""}</span></li>`).join("")}</ul>` : `<p class="empty">No decisions recorded yet.</p>`}</section>
+    <section class="card"><div class="card-h"><h2>Follow-up due next</h2>${btn("All actions", "nav.go", { kind: "ghost", data: { to: "actions" } })}</div>
+      ${due.length ? `<ul class="feed">${due.map(a => { const it = ctx.d.items[a.itemId]; return `<li class="${isOverdue(a, ctx.today) ? "late" : ""}"><div class="feed-h">${actionBadge(a, ctx.today)}<span class="hint">Due ${fmtDate(a.due)}</span></div><b>${esc(a.text)}</b><span class="hint">${esc(a.owner)}${it ? ` · ${refLink(it)}` : ""}</span></li>`; }).join("")}</ul>` : `<p class="empty">No open follow-up actions.</p>`}</section>
+  </div>`;
 }
 
 /* ====================================================================== */
@@ -265,14 +334,23 @@ export function itemForm(ctx, it, { meetingId = "", errors = {}, values = null, 
 /* ====================================================================== */
 export function meetingsView(ctx) {
   const rows = meetingsArr(ctx);
-  return `${pageHeader({ title: "Meetings", sub: "Each monthly meeting from agenda preparation to approved, archived minutes.",
+  const live = rows.filter(m => m.status !== "archived").slice().reverse();
+  const card = m => { const t = agendaTotals(ctx, m), s = signatureState(m, ctx.d.sigs), circ = m.status === "circulated";
+    const pct = circ ? (s.total ? Math.round(100 * s.signed / s.total) : 0) : t.n ? Math.round(100 * t.decided / t.n) : 0;
+    return `<li><button type="button" class="mcard" data-action="meeting.open" data-id="${esc(m.id)}">${dateBlock(m.date)}
+      <span class="mcard-b"><span class="mcard-h">${phaseBadge(ctx, m)}<span class="hint">${esc(whenText(m.date, ctx.today))}</span></span><b>${esc(m.title)}</b>
+        <span class="hint">${esc(m.ref)}${m.time ? ` · ${esc(m.time)}` : ""} · ${plural(t.n, "item")}${t.hc ? ` · ${plural(t.hc, "position")}` : ""}</span>
+        ${["preparation", "agenda_issued"].includes(m.status) ? "" : `<span class="mcard-p"><span class="rail-prog"><span style="width:${pct}%"></span></span><span class="hint">${circ ? `${s.signed}/${s.total} signed` : `${t.decided}/${t.n} decided`}</span></span>`}</span>${icon("chevron")}</button></li>`; };
+  return `${pageHeader({ title: "Meetings", sub: "Each monthly meeting, from agenda preparation to approved and archived minutes.",
       actions: ctx.role === "Secretary" ? btn("New meeting", "meeting.new", { kind: "primary", ic: "plus" }) : "" })}
+  ${live.length ? `<section aria-label="Meetings in progress"><h2 class="sec-h">In progress</h2><ul class="mcards">${live.map(card).join("")}</ul></section>` : ""}
+  <h2 class="sec-h">All meetings</h2>
   ${dataTable({ id: "meetings", rows, tstate: ctx.ui.tables.meetings, caption: "Meetings",
     rowAttrs: r => `class="clickable" data-action="meeting.open" data-id="${esc(r.id)}" tabindex="0"`,
     empty: "No meetings yet.",
     columns: [
       { key: "ref", label: "Reference", render: r => `<span class="ref">${esc(r.ref)}</span>`, width: "110px" },
-      { key: "title", label: "Meeting" },
+      { key: "title", label: "Meeting", render: r => `<b>${esc(r.title)}</b>` },
       { key: "date", label: "Date", render: r => fmtDate(r.date) },
       { key: "agenda", label: "Items", num: true, value: r => r.agenda.length, render: r => String(r.agenda.length) },
       { key: "version", label: "Minutes version", num: true, render: r => r.version ? `v${r.version}` : "—" },
@@ -285,7 +363,7 @@ const STEPS = [["preparation", "Preparation"], ["agenda_issued", "Agenda issued"
 function stepper(ctx, m) {
   const ph = meetingPhase(m, ctx.d.sigs).key;
   const cur = m.status === "archived" ? 6 : ph === "approved" ? 5 : m.status === "circulated" ? 4 : MEETING_STATES[m.status].order;
-  return `<ol class="stepper" aria-label="Meeting workflow">${STEPS.map(([, l], i) => `<li class="${i < cur ? "done" : i === cur ? "current" : ""}" ${i === cur ? 'aria-current="step"' : ""}><span class="dot">${i < cur ? icon("actions") : i + 1}</span><span>${l}</span></li>`).join("")}</ol>`;
+  return `<ol class="stepper" aria-label="Meeting workflow" style="--steps:${STEPS.length}">${STEPS.map(([, l], i) => `<li class="${i < cur ? "done" : i === cur ? "current" : ""}" ${i === cur ? 'aria-current="step"' : ""}><span class="dot">${i < cur ? icon("check") : i + 1}</span><span class="step-l">${l}</span><span class="step-of">Step ${i + 1} of ${STEPS.length}</span></li>`).join("")}</ol>`;
 }
 
 export function meetingDetail(ctx, m) {
@@ -304,15 +382,22 @@ export function meetingDetail(ctx, m) {
     if (m.status === "circulated" && ["approved", "signed"].includes(ph.key)) transitions.push(btn("Archive approved minutes", "meeting.transition", { kind: "primary", ic: "archive", data: { id: m.id, to: "archived" } }));
     if (m.status !== "archived") transitions.unshift(btn("Edit details", "meeting.edit", { ic: "edit", data: { id: m.id } }));
   }
-  if (ctx.s.downloads && agenda.length) transitions.unshift(
-    btn(m.snapshot ? `Minutes v${m.version} (PDF)` : "Draft minutes (PDF)", "minutes.pdf", { ic: "download", data: { id: m.id } }),
-    btn("Word", "minutes.download", { kind: "ghost", ic: "download", title: "Word file for editing on a computer", data: { id: m.id } }));
-  if (sec && agenda.length && m.status !== "archived") transitions.unshift(btn("Email members", "email.members", { ic: "mail", data: { id: m.id } }));
-  if (agenda.length) transitions.unshift(btn("Present", "present.open", { ic: "present", data: { id: m.id } }));
+  const tools = [];
+  if (agenda.length) tools.push(btn("Present", "present.open", { ic: "present", data: { id: m.id } }), btn(m.snapshot ? `Minutes v${m.version}` : "Draft minutes", "minutes.view", { ic: "eye", data: { id: m.id } }));
+  if (sec && agenda.length && m.status !== "archived") tools.push(btn("Email members", "email.members", { ic: "mail", data: { id: m.id } }));
   const q = quorumState(m, ctx.d.roster.quorum);
+  const t = agendaTotals(ctx, m), p = m.date ? dayPart(m.date) : null;
   const tabs = [["agenda", `Agenda and minutes (${agenda.length})`], ["attendance", `Attendance (${q.present})`], ["signatures", "Signatures"], ["versions", `Versions (${m.versions.length})`], ["log", "Change log"]];
-  return `${pageHeader({ crumbs: [{ label: "Meetings", href: "#meetings", action: "meeting.back" }, { label: m.title }], title: m.title,
-      sub: `<span class="ref">${esc(m.ref)}</span> · ${fmtDate(m.date)}${m.time ? ` · ${esc(m.time)}` : ""}${m.location ? ` · ${esc(m.location)}` : ""}${m.version ? ` · minutes v${m.version}` : ""} · ${phaseBadge(ctx, m)}${q.required ? ` · ${badge(q.met ? `Quorum met (${q.present}/${q.required})` : `No quorum (${q.present}/${q.required})`, q.met ? "ok" : "bad")}` : ""}`, actions: transitions.join("") })}
+  return `<nav class="crumbs" aria-label="Breadcrumb"><a href="#meetings" data-action="meeting.back">Meetings</a><span aria-hidden="true">/</span><span aria-current="page">${esc(m.title)}</span></nav>
+  <header class="mhero">
+    <div class="mhero-top">${dateBlock(m.date)}
+      <div class="mhero-tt"><div class="mhero-badges"><span class="ref">${esc(m.ref)}</span>${phaseBadge(ctx, m)}${m.version ? `<span class="badge neutral">Minutes v${m.version}</span>` : ""}${q.required ? badge(q.met ? `Quorum met (${q.present}/${q.required})` : `No quorum (${q.present}/${q.required})`, q.met ? "ok" : "bad") : ""}</div>
+        <h1>${esc(m.title)}</h1>
+        <p class="hero-meta">${p ? `<span>${icon("clock")}${esc(p.wd)}, ${fmtDate(m.date)}${m.time ? `, ${esc(m.time)}` : ""}</span>` : ""}${m.location ? `<span>${icon("pin")}${esc(m.location)}</span>` : ""}${m.chairman ? `<span>${icon("users")}Chairman: ${esc(ctx.name(m.chairman))}</span>` : ""}</p></div>
+      <dl class="mhero-stats"><div><dt>Items</dt><dd>${t.n}</dd></div><div><dt>Positions</dt><dd>${t.hc || "—"}</dd></div><div><dt>Decided</dt><dd>${t.decided}/${t.n}</dd></div></dl>
+    </div>
+    <div class="mhero-actions"><div class="mh-tools">${tools.join("")}</div><div class="mh-next">${transitions.join("")}</div></div>
+  </header>
   ${stepper(ctx, m)}
   ${meetingGuide(ctx, m, ph, s, agenda)}
   ${banners(ctx, m, ph, s)}
@@ -487,23 +572,47 @@ function itemDossier(ctx, m, it) {
   </div>`;
 }
 
-export function minutesDocument(ctx, m, snap) {
+/** The minutes as a formal document: the same layout on screen, for signing, and in the viewer. */
+export function minutesDocument(ctx, m, snap, { draft = false } = {}) {
   if (!snap) return `<p class="empty">No circulated version yet.</p>`;
   const s = signatureState(m, ctx.d.sigs);
-  return `<article class="minutes-doc" aria-label="Minutes version ${snap.v}">
-    <header><div><div class="lbl">Workforce Planning Committee · Minutes of meeting</div><h2>${esc(m.title)}</h2></div>
-      <dl><div><dt>Reference</dt><dd>${esc(m.ref)}</dd></div><div><dt>Date</dt><dd>${fmtDate(m.date)}${snap.time ? ` ${esc(snap.time)}` : ""}</dd></div><div><dt>Version</dt><dd>v${snap.v}${m.version !== snap.v ? " (superseded)" : ""}</dd></div><div><dt>Circulated</dt><dd>${fmtDateTime(snap.at)}</dd></div></dl></header>
-    ${snap.location || Object.keys(snap.attendance || {}).length ? `<div class="doc-att">${snap.location ? `<div><span class="lbl">Location</span> ${esc(snap.location)}</div>` : ""}${ATTENDANCE.map(a => { const who = Object.entries(snap.attendance || {}).filter(([, s]) => s === a).map(([u]) => ctx.name(u)); return who.length ? `<div><span class="lbl">${a === "Apology" ? "Apologies" : a}</span> ${esc(who.join(", "))}</div>` : ""; }).join("")}</div>` : ""}
-    <table class="grid doc-table"><thead><tr><th scope="col" style="width:36px">#</th><th scope="col">Item and request</th><th scope="col">Discussion</th><th scope="col">Outcome and decision</th><th scope="col">Actions</th></tr></thead><tbody>
-    ${snap.items.map((x, i) => `<tr><td>${i + 1}</td><td><span class="ref">${esc(x.ref)}</span><div><b>${esc(x.title)}</b></div><div class="hint">${esc(x.category)} · ${esc(x.dept)}</div><p class="pre">${esc(x.request)}</p>${factsLine(x)}</td><td class="pre">${esc(x.discussion || "—")}</td><td>${x.outcome ? badge(x.outcome, outcomeTone(x.outcome)) : ""}${x.hcApproved != null && x.hcApproved !== "" ? `<div class="hint">${esc(x.hcApproved)} positions approved</div>` : ""}<p class="pre"><b>${esc(x.decision || (x.outcome ? "" : "—"))}</b></p></td><td>${x.actions.length ? x.actions.map(a => `<div>${esc(a.text)}<div class="hint">${esc(a.owner)} · ${fmtDate(a.due)}</div></div>`).join("") : "—"}</td></tr>`).join("")}
-    </tbody></table>
-    <footer><span class="lbl">Signatures on v${m.version}</span>
-      <table class="grid compact"><thead><tr><th scope="col">Name</th><th scope="col">Role</th><th scope="col">Status</th><th scope="col">Date and time</th></tr></thead><tbody>
+  const att = snap.attendance || {};
+  const who = a => Object.entries(att).filter(([, v]) => v === a).map(([u]) => ctx.name(u));
+  const hcA = snap.items.reduce((n, x) => n + (["Rejected", "Deferred", "Returned for clarification", ""].includes(x.outcome) ? 0 : Number(x.hcApproved) || 0), 0);
+  const fact = (l, v) => v == null || v === "" ? "" : `<div><dt>${l}</dt><dd>${v}</dd></div>`;
+  return `<article class="minutes-doc ${draft ? "is-draft" : ""}" aria-label="Minutes ${draft ? "draft" : `version ${snap.v}`}">
+    <header class="doc-head"><div class="doc-brand"><span class="brand-mark" aria-hidden="true">WPC</span><div><span class="lbl">Workforce Planning Committee</span><b>Minutes of meeting</b></div></div>
+      <span class="doc-state ${draft ? "draft" : m.status === "archived" ? "final" : ""}">${draft ? "Draft, not circulated" : m.status === "archived" ? `Final · v${snap.v}` : `Version ${snap.v}${m.version !== snap.v ? " (superseded)" : " · under review"}`}</span></header>
+    <h2 class="doc-title">${esc(m.title)}</h2>
+    <dl class="doc-meta">${fact("Reference", esc(m.ref))}${fact("Date", `${fmtDate(m.date)}${snap.time ? `, ${esc(snap.time)}` : ""}`)}${fact("Location", esc(snap.location))}${fact("Chairman", m.chairman ? esc(ctx.name(m.chairman)) : "")}${fact(draft ? "Prepared" : "Circulated", fmtDateTime(snap.at))}${fact("Items", snap.items.length)}${draft ? "" : fact("Positions approved", hcA)}</dl>
+    ${Object.keys(att).length ? `<section class="doc-sec"><h3>Attendance</h3><dl class="doc-att">${ATTENDANCE.map(a => who(a).length ? `<div><dt>${a === "Apology" ? "Apologies" : a} (${who(a).length})</dt><dd>${esc(who(a).join(", "))}</dd></div>` : "").join("")}</dl></section>` : ""}
+    <section class="doc-sec"><h3>Summary of decisions</h3>
+      <div class="table-scroll"><table class="grid compact"><thead><tr><th scope="col" style="width:32px">#</th><th scope="col">Item</th><th scope="col">Outcome</th><th scope="col" class="num">Positions</th></tr></thead><tbody>
+      ${snap.items.map((x, i) => `<tr><td>${i + 1}</td><td><span class="ref">${esc(x.ref)}</span> ${esc(x.title)}</td><td>${x.outcome ? badge(x.outcome, outcomeTone(x.outcome)) : `<span class="hint">Not recorded</span>`}</td><td class="num">${x.hcApproved != null && x.hcApproved !== "" ? esc(x.hcApproved) : "—"}</td></tr>`).join("")}
+      </tbody></table></div></section>
+    ${snap.items.map((x, i) => `<section class="doc-item"><div class="doc-item-h"><span class="num-badge">${i + 1}</span><div><span class="ref">${esc(x.ref)}</span><h3>${esc(x.title)}</h3><span class="hint">${esc(x.dept)} · ${esc(x.category)}${x.sub ? ` · ${esc(x.sub)}` : ""}${x.owner ? ` · Responsible: ${esc(x.owner)}` : ""}</span></div></div>
+      ${factsLine(x)}
+      <div class="doc-grid"><div><span class="lbl">Request</span><p class="pre">${esc(x.request || "—")}</p></div><div><span class="lbl">Discussion</span><p class="pre">${esc(x.discussion || "—")}</p></div></div>
+      <div class="doc-decision"><span class="lbl">Decision</span><div>${x.outcome ? badge(x.outcome, outcomeTone(x.outcome)) : ""}${x.hcApproved != null && x.hcApproved !== "" ? ` <span class="hint">${esc(x.hcApproved)} position${Number(x.hcApproved) === 1 ? "" : "s"} approved</span>` : ""}</div><p class="pre"><b>${esc(x.decision || (x.outcome ? "" : "Not recorded yet"))}</b></p></div>
+      ${x.actions.length ? `<div><span class="lbl">Follow-up actions</span><table class="grid compact"><thead><tr><th scope="col">Action</th><th scope="col">Responsible</th><th scope="col">Due</th></tr></thead><tbody>${x.actions.map(a => `<tr><td>${esc(a.text)}</td><td>${esc(a.owner)}</td><td>${fmtDate(a.due)}</td></tr>`).join("")}</tbody></table></div>` : ""}
+    </section>`).join("")}
+    <footer class="doc-sec"><h3>Signatures${draft ? "" : ` on version ${m.version}`}</h3>
+      ${draft ? `<p class="hint">Signatures are collected after the secretaries circulate the minutes.</p>` : `<div class="table-scroll"><table class="grid compact"><thead><tr><th scope="col">Name</th><th scope="col">Role</th><th scope="col">Status</th><th scope="col">Date and time</th></tr></thead><tbody>
       ${s.rows.map(r => `<tr><td>${esc(ctx.name(r.user))}</td><td>Member</td><td>${r.sig ? badge(r.sig.status === "signed" ? "Signed" : "Correction requested") : badge("Pending")}</td><td>${r.sig ? fmtDateTime(r.sig.at) : "—"}</td></tr>`).join("")}
       ${m.chairman ? (() => { const c = sigFor(m, m.chairman, ctx.d.sigs, "chairman"); return `<tr><td>${esc(ctx.name(m.chairman))}</td><td>Chairman</td><td>${c ? badge(c.status === "approved" ? "Approved" : "Correction requested") : badge("Pending")}</td><td>${c ? fmtDateTime(c.at) : "—"}</td></tr>`; })() : ""}
-      </tbody></table>
-      <p class="hint">Electronic sign-off recorded in WPC Hub against the signer's claude.ai account. Not a qualified electronic signature.</p></footer>
+      </tbody></table></div>`}
+      <p class="hint">Electronic sign-off recorded in WPC Hub against the signer's account. Not a qualified electronic signature.</p></footer>
   </article>`;
+}
+/** Full-screen reader for the minutes (current version, or the draft built from what is recorded so far). */
+export function minutesViewer(ctx, m) {
+  const draft = !m.snapshot;
+  const snap = m.snapshot || buildSnapshot(m, ctx.d, new Date().toISOString());
+  return `<div class="docview" role="dialog" aria-modal="true" aria-label="Minutes of ${esc(m.title)}">
+    <header class="dv-bar"><div class="pr-meta"><span class="brand-mark" aria-hidden="true">WPC</span><span>${esc(m.ref)} · ${draft ? "Draft minutes" : `Minutes v${m.version}`}</span></div>
+      <div class="pr-tools">${ctx.s.downloads ? `${btn("PDF", "minutes.pdf", { kind: "primary", ic: "download", data: { id: m.id } })}${btn("Word", "minutes.download", { ic: "download", title: "Word file for editing on a computer", data: { id: m.id } })}` : ""}<button class="btn ghost icon-only" data-action="doc.close" aria-label="Close">${icon("close")}</button></div></header>
+    <div class="dv-scroll" tabindex="-1"><div class="dv-page">${minutesDocument(ctx, m, snap, { draft })}</div></div>
+  </div>`;
 }
 
 function signaturesTab(ctx, m, s) {

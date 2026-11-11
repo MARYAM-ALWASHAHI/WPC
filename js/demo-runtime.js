@@ -6,13 +6,18 @@
   const isDemo = /github\.io$/.test(location.hostname) || /[?&]demo\b/.test(location.search);
   if (!isDemo || window.claude) return;
 
-  const KEY = "wpc-hub-demo-v1", ROLE_KEY = "wpc-hub-demo-role";
+  const KEY = "wpc-hub-demo-v2", ROLE_KEY = "wpc-hub-demo-role";
+  // Role names, not people: nobody real is named in the demo.
   const PEOPLE = [
-    { id: "u_sec", email: "demo.secretary@example.com", name: "Demo Secretary" },
-    { id: "u_chair", email: "demo.chairman@example.com", name: "Demo Chairman" },
-    { id: "u_mem", email: "demo.member@example.com", name: "Demo Member" },
-    { id: "u_req", email: "demo.requester@example.com", name: "Demo Requester (Carbon)" },
-    { id: "u_view", email: "demo.viewer@example.com", name: "Demo Viewer" },
+    { id: "u_sec", email: "demo.secretary@example.com", name: "WPC Secretary" },
+    { id: "u_chair", email: "demo.chairman@example.com", name: "Committee Chairman" },
+    { id: "u_mem", email: "demo.finance@example.com", name: "Finance member" },
+    { id: "u_m2", email: "demo.operations@example.com", name: "Operations member" },
+    { id: "u_m3", email: "demo.hrbp@example.com", name: "HR Business Partner" },
+    { id: "u_m4", email: "demo.od@example.com", name: "OD member" },
+    { id: "u_m5", email: "demo.maintenance@example.com", name: "Maintenance member" },
+    { id: "u_req", email: "demo.requester@example.com", name: "Casthouse Department" },
+    { id: "u_view", email: "demo.viewer@example.com", name: "Read-only viewer" },
   ];
   const ROLES = {
     Secretary: { id: "u_sec", editor: true, write: true },
@@ -37,8 +42,8 @@
     if (store) return store;
     const saved = ls.get(KEY);
     if (saved) { try { store = JSON.parse(saved); return store; } catch (_) { /* fall through to seed */ } }
-    let seed = {};
-    try { seed = await (await fetch("seed.json", { cache: "no-store" })).json(); } catch (_) {}
+    const today = new Date().toISOString().slice(0, 10);
+    const seed = window.__WPC_SEED ? window.__WPC_SEED(today, { members: ["u_mem", "u_m2", "u_m3", "u_m4", "u_m5"], chairman: "u_chair", secretary: "u_sec", requester: "u_req" }) : {};
     seed["config/roster"] = seed["config/roster"] || { chairman: "u_chair", members: ["u_mem"], quorum: null };
     store = seed; save(); return store;
   };
@@ -82,9 +87,9 @@
       const type = { pdf: "application/pdf", doc: "application/msword", csv: "text/csv", json: "application/json" }[filename.split(".").pop()] || "application/octet-stream";
       const blob = data instanceof Blob ? data : new Blob([data], { type });
       const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob); a.download = filename; a.target = "_blank"; a.rel = "noopener";
+      a.href = URL.createObjectURL(blob); a.download = filename;
       document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+      setTimeout(() => URL.revokeObjectURL(a.href), 120000); // phones open the file late; revoking early shows a blank page
       return { status: "saved" };
     },
   };

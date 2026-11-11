@@ -12,7 +12,9 @@ Live prototype: https://claude.ai/artifact/FDj8nmD2CoVFfa6XskrMkY (private; shar
 - js/app.js — routing, UI state, commands, forms, minutes autosave + conflict dialog
 - tests/domain.test.mjs — unit tests (20): `node --test tests/domain.test.mjs`
 - tests/e2e.cjs + tests/mock-runtime.js — end-to-end, responsive, accessibility (needs Playwright + axe-core)
-- seed.json — the fictional example records
+- js/demo-seed.js — builds the fictional example record relative to today's date (seed.json is a snapshot of its output)
+- js/vendor/jspdf.umd.min.js — jsPDF 2.5.1 (MIT), shipped with the app so PDFs work without an outside script host
+- tests/seed.fixture.json — the small fixed record the end-to-end tests run against
 
 ## Data collections
 items, meetings, minutes (id = meetingId__itemId), actions, signatures (one doc per person), requests (one doc per requester, written only by them), intake (secretary decisions on requests), audit, config/roster (incl. quorum), counters/refs. File attachments use the assets capability (secretaries only; PDF, images, text).
@@ -38,3 +40,13 @@ On claude.ai the file does nothing. Real committee work uses the claude.ai versi
 - Minutes and the report download as **PDF** (fixes the blank screen phones show for the Word file). Word stays as a secondary button.
 - Minutes PDF and Word now include cost, responsible and subcategory per item.
 - **Email members → Open in Outlook** opens a filled Outlook on the web compose window. Nothing is sent automatically; the user presses Send.
+
+## v6 (Nov 2026): redesign and review against the requirements
+- **One light look with a navy frame.** The app no longer follows the device's dark mode, so every laptop, phone and projector shows the same screen.
+- **Committee home**: next meeting with its agenda, a role-aware "Needs your attention" list, key figures, where every item stands, items by category, decisions per meeting, outcomes, departments, charter measures, latest decisions and follow-up due next.
+- **Meetings**: cards for meetings in progress, a meeting header with the date, stage and primary action, and a step track.
+- **Present**: opens on a cover with the agenda and totals; each item shows the request, key facts, earlier decisions, open follow-up and the committee decision. Works on a phone.
+- **Minutes on screen**: "Draft minutes" / "Minutes vN" opens the formal document inside the app (summary of decisions, one section per item, signatures). PDF and Word are downloads from there.
+- **Phone layout**: bottom tab bar and a slide-in menu.
+- **Example record**: six monthly meetings, 21 items, minutes, actions and signatures, dated relative to today. Demo people are role names, not real people.
+- jsPDF is shipped with the app instead of loaded from a CDN.

@@ -14,14 +14,17 @@ const TABLE = (sort, dir = "asc") => ({ sort, dir, page: 1, size: 25 });
 const ITEM_FILTER = () => ({ q: "", status: "open", cat: "", dept: "", stage: "", owner: "", month: "", pending: false, overdue: false, archived: false });
 const ui = {
   route: "dashboard", meetingId: null, meetingTab: "agenda", openItem: null,
-  agendaMode: "one", agendaFocus: {}, present: null, report: R.quickPeriod("year", D.isoToday()),
+  agendaMode: "one", agendaFocus: {}, present: null, doc: null, report: R.quickPeriod("year", D.isoToday()),
   itemFilter: ITEM_FILTER(),
   actionFilter: { status: "active", owner: "", overdue: false },
   auditFilter: { q: "", entity: "" },
   tables: { items: TABLE("ref", "desc"), meetings: TABLE("date", "desc"), actions: TABLE("due"), audit: TABLE("at", "desc"), requests: TABLE("submittedAt", "desc") },
 };
 const ROUTES = { dashboard: V.dashboard, requests: V.requestsView, meetings: null, items: V.itemsView, actions: V.actionsView, review: V.reviewView, records: V.recordsView, reports: R.reportsView, admin: V.adminView };
-const NAV = [["dashboard", "Overview", "dashboard"], ["requests", "Requests", "inbox"], ["meetings", "Meetings", "meeting"], ["items", "Agenda items", "items"], ["actions", "Actions", "actions"], ["review", "Review and signatures", "sign"], ["records", "Historical records", "history"], ["reports", "Reports", "report"], ["admin", "Users and permissions", "users"]];
+const NAV = [["Committee"], ["dashboard", "Home", "dashboard"], ["meetings", "Meetings", "meeting"], ["items", "Agenda items", "items"], ["requests", "Requests", "inbox"],
+  ["Follow-up"], ["actions", "Actions", "actions"], ["review", "Review and signatures", "sign"],
+  ["Records"], ["reports", "Reports", "report"], ["records", "Historical records", "history"], ["admin", "Users and permissions", "users"]];
+const TABS = ["dashboard", "meetings", "items", "actions"];
 
 /* ---------- names ---------- */
 const names = {};
@@ -72,6 +75,7 @@ function render() {
   }
   window.scrollTo(0, y);
   if (ui.present) renderPresent();
+  if (ui.doc) renderDoc();
   if (ui.openItem && panelOpen() && document.querySelector('.panel[data-kind="item"]')) refreshItemPanel();
 }
 const loading = text => `<div class="loading" role="status"><span class="spinner" aria-hidden="true"></span>${esc(text)}</div>`;
@@ -80,12 +84,14 @@ function renderShell(c) {
   const tasks = V.myReviewTasks(c).length;
   const overdue = Object.values(state.data.actions).filter(a => D.isOverdue(a, c.today)).length;
   const counts = { review: tasks, actions: overdue, requests: c.role === "Secretary" ? V.pendingRequests(c).length : 0 };
-  document.getElementById("nav").innerHTML = NAV.map(([k, l, ic]) => `<a href="#${k}" class="${ui.route === k ? "on" : ""}" ${ui.route === k ? 'aria-current="page"' : ""}>${icon(ic)}<span>${l}</span>${counts[k] ? `<span class="nav-count ${k === "actions" ? "bad" : ""}">${counts[k]}</span>` : ""}</a>`).join("");
+  const link = ([k, l, ic], short) => `<a href="#${k}" class="${ui.route === k ? "on" : ""}" ${ui.route === k ? 'aria-current="page"' : ""}>${icon(ic)}<span>${short && k === "items" ? "Items" : l}</span>${counts[k] ? `<span class="nav-count ${k === "actions" ? "bad" : ""}">${counts[k]}</span>` : ""}</a>`;
+  document.getElementById("nav").innerHTML = NAV.map(n => n.length === 1 ? `<span class="nav-g">${n[0]}</span>` : link(n)).join("");
+  document.getElementById("tabbar").innerHTML = NAV.filter(n => TABS.includes(n[0])).map(n => link(n, true)).join("") + `<button type="button" data-action="side.toggle" aria-controls="side">${icon("more")}<span>More</span>${counts.review || counts.requests ? `<span class="nav-count">${(counts.review || 0) + (counts.requests || 0)}</span>` : ""}</button>`;
   const u = document.getElementById("user");
-  u.innerHTML = state.session.me ? `<span class="avatar"><img src="${esc(state.session.me.avatarUrl)}" alt=""></span><span class="u-meta"><span class="u-name"></span><span class="u-role">${esc(c.role)}</span></span>` : "";
+  u.innerHTML = state.session.me ? `<span class="avatar">${esc((state.session.me.name || "You").split(/\s+/).map(w => w[0]).join("").slice(0, 2).toUpperCase())}</span><span class="u-meta"><span class="u-name"></span><span class="u-role">${esc(c.role)}</span></span>` : "";
   const n = u.querySelector(".u-name"); if (n) n.textContent = state.session.me?.name || "You";
   const live = document.getElementById("live");
-  live.innerHTML = window.__WPC_DEMO ? `${icon("alert")}<span>Demo, this browser only</span>` : state.session.db ? `${icon("live")}<span>Live shared record</span>` : `${icon("alert")}<span>Not connected</span>`;
+  live.innerHTML = window.__WPC_DEMO ? `${icon("info")}<span>Demo, this browser only</span>` : state.session.db ? `${icon("live")}<span>Live shared record</span>` : `${icon("alert")}<span>Not connected</span>`;
   live.className = `live ${state.session.db ? "on" : "off"}`;
 }
 
@@ -94,7 +100,7 @@ function route() {
   const h = (location.hash || "#dashboard").slice(1);
   ui.route = h in ROUTES ? h : "dashboard";
   if (ui.route !== "meetings") ui.meetingId = null;
-  closePanel(); ui.openItem = null;
+  closePanel(); ui.openItem = null; document.body.classList.remove("side-open");
   render();
   document.getElementById("main").focus({ preventScroll: true });
 }
@@ -121,6 +127,8 @@ function refreshItemPanel() {
 /* ====================================================================== */
 const COMMANDS = {
   "layer.close": () => { closePanel(); ui.openItem = null; },
+  "side.toggle": () => document.body.classList.toggle("side-open"),
+  "side.close": () => document.body.classList.remove("side-open"),
   "nav.go": el => go(el.dataset.to),
   "nav.items": el => { ui.itemFilter = { ...ITEM_FILTER(), status: "", ...JSON.parse(el.dataset.filter) }; ui.tables.items.page = 1; go("items"); },
   "nav.actions": el => { ui.actionFilter = { status: "active", owner: "", overdue: false, ...JSON.parse(el.dataset.filter || "{}") }; go("actions"); },
@@ -474,8 +482,8 @@ async function peopleSearch(input, menuId, exclude, action, extra = {}) {
 /* ====================================================================== */
 document.addEventListener("click", e => {
   const el = e.target.closest("[data-action]");
-  const nav = e.target.closest("#nav a");
-  if (nav && nav.getAttribute("href") === location.hash) { e.preventDefault(); route(); return; }
+  const nav = e.target.closest("#nav a, #tabbar a");
+  if (nav && nav.getAttribute("href") === (location.hash || "#dashboard")) { e.preventDefault(); route(); return; }
   if (!el || el.disabled) return;
   const cmd = COMMANDS[el.dataset.action];
   if (!cmd) return;
@@ -488,6 +496,7 @@ document.addEventListener("keydown", e => {
     if (e.key === "Escape") { e.preventDefault(); return COMMANDS["present.close"](); }
     if (e.key === "ArrowRight" || e.key === "ArrowLeft") { e.preventDefault(); return stepPresent(e.key === "ArrowRight" ? 1 : -1); }
   }
+  if (e.key === "Escape" && ui.doc && !document.getElementById("dialog").innerHTML) { e.preventDefault(); return COMMANDS["doc.close"](); }
   if (e.key === "Escape" && panelOpen() && !document.getElementById("dialog").innerHTML) { closePanel(); ui.openItem = null; }
   if (e.key === "Enter" && e.target.matches("tr[data-action]")) { e.preventDefault(); e.target.click(); }
 });
@@ -583,11 +592,13 @@ Object.assign(COMMANDS, {
     document.querySelector(".agenda-focus")?.scrollIntoView({ block: "start", behavior: "smooth" });
   },
   "present.open": el => {
-    const m = state.data.meetings[el.dataset.id]; const a = agendaOf(m);
-    const i = Math.max(0, a.findIndex(x => x.id === ui.agendaFocus[m.id]));
-    ui.present = { meetingId: m.id, i }; renderPresent();
+    const m = state.data.meetings[el.dataset.id];
+    ui.present = { meetingId: m.id, i: -1 }; renderPresent();   // -1 is the cover with the agenda
   },
-  "present.close": () => { ui.present = null; document.getElementById("present")?.remove(); document.body.classList.remove("presenting"); },
+  "present.go": el => { if (ui.present) { ui.present.i = Number(el.dataset.i); renderPresent(); } },
+  "minutes.view": el => { ui.doc = el.dataset.id; renderDoc(); },
+  "doc.close": () => { ui.doc = null; document.getElementById("docview")?.remove(); if (!ui.present) document.body.classList.remove("presenting"); },
+  "present.close": () => { ui.present = null; document.getElementById("present")?.remove(); if (!ui.doc) document.body.classList.remove("presenting"); },
   "present.step": el => stepPresent(Number(el.dataset.dir)),
   "pdf.pack": async el => {
     const m = state.data.meetings[el.dataset.id];
@@ -627,17 +638,27 @@ FORMS["report.period"] = async () => {};
 function stepPresent(dir) {
   if (!ui.present) return;
   const m = state.data.meetings[ui.present.meetingId]; const n = agendaOf(m).length;
-  ui.present.i = Math.max(0, Math.min(n - 1, ui.present.i + dir)); renderPresent();
+  ui.present.i = Math.max(-1, Math.min(n - 1, ui.present.i + dir)); renderPresent();
 }
 function renderPresent() {
   const m = ui.present && state.data.meetings[ui.present.meetingId];
   if (!m) return COMMANDS["present.close"]();
   let host = document.getElementById("present");
   if (!host) { host = document.createElement("div"); host.id = "present"; document.body.appendChild(host); }
-  ui.present.i = Math.min(ui.present.i, Math.max(0, agendaOf(m).length - 1));
+  ui.present.i = Math.min(ui.present.i, agendaOf(m).length - 1);
   host.innerHTML = presentHTML(ctx(), m, ui.present.i);
   document.body.classList.add("presenting");
   host.querySelector(".pr-slide")?.focus({ preventScroll: true });
+}
+function renderDoc() {
+  const m = ui.doc && state.data.meetings[ui.doc];
+  if (!m) return COMMANDS["doc.close"]();
+  let host = document.getElementById("docview");
+  if (!host) { host = document.createElement("div"); host.id = "docview"; document.body.appendChild(host); }
+  const sc = host.querySelector(".dv-scroll")?.scrollTop || 0;
+  host.innerHTML = V.minutesViewer(ctx(), m);
+  document.body.classList.add("presenting");
+  const el = host.querySelector(".dv-scroll"); el.scrollTop = sc; if (!sc) el.focus({ preventScroll: true });
 }
 async function saveFile(filename, data) {
   const dl = state.session.downloads;

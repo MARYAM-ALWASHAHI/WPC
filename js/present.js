@@ -2,7 +2,7 @@
  * WPC Hub — presenting requests to the committee.
  * presentHTML: a full-screen, one-item-per-screen view the requester can talk through.
  * buildPdf: the same content as a PDF "meeting pack" (cover + one page per item), or one request sheet.
- * jsPDF is loaded from cdnjs only when a PDF is asked for.
+ * jsPDF (js/vendor) is loaded only when a PDF is asked for.
  */
 import { esc, icon, fmtDate } from "./ui.js";
 import { itemStage } from "./domain.js";
@@ -26,34 +26,62 @@ function tiles(it) {
   return t;
 }
 
+const TONE = { Approved: "ok", "Approved with conditions": "ok", "Recommended to EXCO": "info", "Endorsed by circulation": "ok", Rejected: "bad", Deferred: "warn", "Returned for clarification": "warn" };
+const longDate = iso => (iso ? new Date(iso + "T00:00:00").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" }) : "");
+
+/** i = -1 is the cover (the agenda); 0..n-1 are the items. */
 export function presentHTML(ctx, m, i) {
   const agenda = m.agenda.map(id => ctx.d.items[id]).filter(Boolean);
   const it = agenda[i];
-  if (!it) return "";
-  const prev = earlier(ctx, m, it);
-  const docs = (it.attachments || []).filter(a => (a.kind || "request") === "request");
-  return `<div class="present" role="dialog" aria-modal="true" aria-label="Presenting ${esc(it.ref)}">
+  const cover = i < 0 || !it;
+  const hc = agenda.reduce((n, x) => n + (Number(x.hcRequested) || 0), 0), cost = agenda.reduce((n, x) => n + (Number(x.annualCost) || 0), 0);
+  let slide;
+  if (cover) {
+    slide = `<main class="pr-slide pr-cover" tabindex="-1">
+      <div class="pr-cover-h"><span class="eyebrow">Workforce Planning Committee · ${esc(m.ref)}</span>
+        <h1 class="pr-title">${esc(m.title)}</h1>
+        <p class="pr-sub">${esc(longDate(m.date))}${m.time ? ` · ${esc(m.time)}` : ""}${m.location ? ` · ${esc(m.location)}` : ""}</p>
+        <div class="pr-tiles"><div class="pr-tile"><span>Items for decision</span><b>${agenda.length}</b></div>${hc ? `<div class="pr-tile"><span>Positions requested</span><b>${hc}</b></div>` : ""}${cost ? `<div class="pr-tile"><span>Annual cost requested</span><b>${esc(fmtOMR(cost))}</b></div>` : ""}</div></div>
+      <section class="pr-body"><h2>Agenda</h2><ol class="pr-agenda">${agenda.map((x, k) => { const o = (ctx.d.minutes[`${m.id}__${x.id}`] || {}).outcome; return `<li><button type="button" data-action="present.go" data-i="${k}"><span class="pa-n">${k + 1}</span><span class="pa-t"><b>${esc(x.title)}</b><span>${esc(x.dept)} · ${esc(x.category)}${x.hcRequested ? ` · ${esc(x.hcRequested)} position${Number(x.hcRequested) === 1 ? "" : "s"}` : ""}</span></span>${o ? `<span class="badge ${TONE[o] || "neutral"}">${esc(o)}</span>` : icon("chevron")}</button></li>`; }).join("")}</ol></section>
+    </main>`;
+  } else {
+    const prev = earlier(ctx, m, it);
+    const docs = (it.attachments || []).filter(a => (a.kind || "request") === "request");
+    const mn = ctx.d.minutes[`${m.id}__${it.id}`] || {};
+    const openActs = Object.values(ctx.d.actions).filter(a => a.itemId === it.id && a.meetingId !== m.id && (a.status === "OPEN" || a.status === "IN_PROGRESS"));
+    slide = `<main class="pr-slide" tabindex="-1">
+      <div class="pr-cols">
+        <div class="pr-main">
+          <div class="pr-kicker"><span class="pr-num">${i + 1}</span><span class="ref">${esc(it.ref)}</span><span class="badge">${esc(itemStage(it, ctx.d))}</span></div>
+          <h1 class="pr-title">${esc(it.title)}</h1>
+          <p class="pr-sub">${esc(it.dept)} · ${esc(it.category)}${it.sub ? ` · ${esc(it.sub)}` : ""}</p>
+          <section class="pr-body"><h2>Request and justification</h2><p class="pre">${esc(it.request || "—")}</p></section>
+          ${docs.length ? `<section class="pr-body"><h2>Supporting documents</h2><div class="pr-docs">${docs.map(a => `<a class="btn" href="/_blob/${esc(a.id)}" target="_blank" rel="noopener">${icon("items")}${esc(a.name)}</a>`).join("")}</div></section>` : ""}
+          ${prev.length ? `<section class="pr-body"><h2>Earlier decisions</h2><ul class="pr-prev">${prev.map(x => `<li><div><b>${fmtDate(x.m.date)}</b>${x.mn.outcome ? ` <span class="badge ${TONE[x.mn.outcome] || "neutral"}">${esc(x.mn.outcome)}</span>` : ""}</div><span>${esc(x.mn.decision || "")}</span></li>`).join("")}</ul></section>` : ""}
+          ${openActs.length ? `<section class="pr-body"><h2>Open follow-up</h2><ul class="pr-prev">${openActs.map(a => `<li><div><b>${esc(a.text)}</b></div><span>${esc(a.owner)} · due ${fmtDate(a.due)}</span></li>`).join("")}</ul></section>` : ""}
+        </div>
+        <aside class="pr-side" aria-label="Key facts">
+          <dl class="pr-facts">${[["Presented by", it.owner || "The department"], ...tiles(it)].map(([l, v], k) => `<div class="${k === 1 && it.hcRequested ? "big" : ""}"><dt>${esc(l)}</dt><dd>${esc(v)}</dd></div>`).join("")}</dl>
+          <div class="pr-decision ${mn.outcome ? "set" : ""}"><span>Committee decision</span>${mn.outcome ? `<b><span class="badge ${TONE[mn.outcome] || "neutral"}">${esc(mn.outcome)}</span>${mn.hcApproved != null && mn.hcApproved !== "" ? ` ${esc(mn.hcApproved)} approved` : ""}</b>${mn.decision ? `<p>${esc(mn.decision)}</p>` : ""}` : `<b>To be decided</b><p>The secretaries record the outcome during the meeting.</p>`}</div>
+        </aside>
+      </div>
+    </main>`;
+  }
+  return `<div class="present" role="dialog" aria-modal="true" aria-label="Presenting ${esc(cover ? m.title : it.ref)}">
     <header class="pr-bar">
       <div class="pr-meta"><span class="brand-mark" aria-hidden="true">WPC</span><span>${esc(m.title)} · ${fmtDate(m.date)}</span></div>
       <div class="pr-tools">
-        <span class="pr-count">Item ${i + 1} of ${agenda.length}</span>
-        <button class="btn" data-action="pdf.pack" data-id="${esc(m.id)}">${icon("download")}Meeting pack (PDF)</button>
+        <span class="pr-count">${cover ? "Agenda" : `Item ${i + 1} of ${agenda.length}`}</span>
+        ${cover ? "" : `<button class="btn" data-action="present.go" data-i="-1">${icon("items")}<span>Agenda</span></button>`}
+        ${ctx.s.downloads ? `<button class="btn" data-action="pdf.pack" data-id="${esc(m.id)}">${icon("download")}<span>Meeting pack (PDF)</span></button>` : ""}
         <button class="btn ghost icon-only" data-action="present.close" aria-label="Close presentation">${icon("close")}</button>
       </div>
     </header>
-    <main class="pr-slide" tabindex="-1">
-      <div class="pr-kicker"><span class="ref">${esc(it.ref)}</span><span class="badge">${esc(itemStage(it, ctx.d))}</span></div>
-      <h1 class="pr-title">${esc(it.title)}</h1>
-      <p class="pr-sub">${esc(it.dept)} · ${esc(it.category)}${it.sub ? ` · ${esc(it.sub)}` : ""} · Presented by ${esc(it.owner || "the department")}</p>
-      ${tiles(it).length ? `<div class="pr-tiles">${tiles(it).map(([l, v]) => `<div class="pr-tile"><span>${esc(l)}</span><b>${esc(v)}</b></div>`).join("")}</div>` : ""}
-      <section class="pr-body"><h2>Request and justification</h2><p class="pre">${esc(it.request || "—")}</p></section>
-      ${docs.length ? `<section class="pr-body"><h2>Supporting documents</h2><div class="pr-docs">${docs.map(a => `<a class="btn" href="/_blob/${esc(a.id)}" target="_blank" rel="noopener">${icon("items")}${esc(a.name)}</a>`).join("")}</div></section>` : ""}
-      ${prev.length ? `<section class="pr-body"><h2>Earlier decisions</h2><ul class="pr-prev">${prev.map(x => `<li><b>${fmtDate(x.m.date)}${x.mn.outcome ? ` · ${esc(x.mn.outcome)}` : ""}</b> ${esc(x.mn.decision || "")}</li>`).join("")}</ul></section>` : ""}
-    </main>
+    ${slide}
     <footer class="pr-foot">
-      <button class="btn" data-action="present.step" data-dir="-1" ${i === 0 ? "disabled" : ""}>${icon("back")}Previous</button>
-      <div class="pr-dots" aria-hidden="true">${agenda.map((_, k) => `<span class="${k === i ? "on" : ""}"></span>`).join("")}</div>
-      <button class="btn primary" data-action="present.step" data-dir="1" ${i === agenda.length - 1 ? "disabled" : ""}>Next${icon("next")}</button>
+      <button class="btn" data-action="present.step" data-dir="-1" ${i < 0 ? "disabled" : ""}>${icon("back")}<span>${i === 0 ? "Agenda" : "Previous"}</span></button>
+      <div class="pr-dots" aria-hidden="true"><span class="${cover ? "on" : ""}"></span>${agenda.map((_, k) => `<span class="${k === i ? "on" : ""}"></span>`).join("")}</div>
+      <button class="btn primary" data-action="present.step" data-dir="1" ${i === agenda.length - 1 ? "disabled" : ""}><span>${cover ? "Start" : "Next"}</span>${icon("next")}</button>
     </footer>
   </div>`;
 }
@@ -64,7 +92,8 @@ function loadJsPdf() {
   if (window.jspdf?.jsPDF) return Promise.resolve(window.jspdf.jsPDF);
   if (!jsPdfPromise) jsPdfPromise = new Promise((resolve, reject) => {
     const s = document.createElement("script");
-    s.src = "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
+    // Shipped with the app, so PDFs work on networks that block outside script hosts.
+    s.src = "js/vendor/jspdf.umd.min.js";
     s.onload = () => (window.jspdf?.jsPDF ? resolve(window.jspdf.jsPDF) : reject(new Error("PDF library did not load")));
     s.onerror = () => { jsPdfPromise = null; reject(new Error("PDF library could not be loaded")); };
     document.head.appendChild(s);

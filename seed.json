@@ -1,258 +1,2869 @@
 {
- "items/ex1": {
-  "id": "ex1",
+ "items/exi01": {
+  "id": "exi01",
   "ref": "WPC-2026-001",
-  "title": "(Example) Renewal of expatriate contract: Senior Reduction Engineer",
+  "title": "Renewal of expatriate contract: Senior Reduction Engineer",
   "category": "Expatriate contract renewal",
   "sub": "Renewal on same terms",
   "dept": "Potline",
   "owner": "HR Manager",
-  "request": "Potline asks to renew the contract of one expatriate Senior Reduction Engineer, ending 31 Dec 2026, for 2 years.",
+  "request": "Potline asks to renew the contract of one expatriate Senior Reduction Engineer for 2 years. The role covers pot-control tuning and no qualified successor is ready yet. A successor plan is attached to the request.",
   "status": "OPEN",
-  "createdAt": "2026-10-05",
+  "createdAt": "2026-06-04",
   "example": true,
   "hcRequested": 1,
   "grade": "Grade 12",
   "budgeted": "Budgeted",
   "annualCost": 42000,
-  "effectiveDate": "2027-01-01",
+  "effectiveDate": "2026-12-31",
   "attachments": []
  },
- "items/ex2": {
-  "id": "ex2",
+ "items/exi02": {
+  "id": "exi02",
   "ref": "WPC-2026-002",
-  "title": "(Example) Two Process Technicians for Casthouse",
+  "title": "Two Process Technicians for the Casthouse shift pattern",
   "category": "Manpower requirement",
   "sub": "New position (budgeted)",
   "dept": "Casthouse",
   "owner": "Casthouse Manager",
-  "request": "Two budgeted technician positions for the new shift pattern.",
-  "status": "OPEN",
-  "createdAt": "2026-10-08",
+  "request": "Two budgeted technician positions to cover the move from a 3-crew to a 4-crew shift pattern in the casting area.",
+  "status": "CLOSED",
+  "createdAt": "2026-06-06",
   "example": true,
   "hcRequested": 2,
   "grade": "Grade 8",
   "budgeted": "Budgeted",
   "annualCost": 18000,
-  "effectiveDate": "2027-01-01",
-  "attachments": []
+  "effectiveDate": "2026-09-12",
+  "attachments": [],
+  "closedDate": "2026-09-02",
+  "evidence": "Both technicians joined. Vacancies closed in the HR system.",
+  "closedBy": "u_sec"
  },
- "items/ex3": {
-  "id": "ex3",
+ "items/exi03": {
+  "id": "exi03",
   "ref": "WPC-2026-003",
-  "title": "(Example) New contractor: scaffolding services, 12 workers",
-  "category": "New contractor request",
-  "sub": "New contractor",
-  "dept": "Maintenance",
-  "owner": "Maintenance Manager",
-  "request": "Contractor manpower for the shutdown period, 3 months.",
-  "status": "OPEN",
-  "createdAt": "2026-10-20",
-  "example": true,
-  "hcRequested": 12,
-  "grade": "",
-  "budgeted": "Non-budgeted",
-  "annualCost": 54000,
-  "effectiveDate": "2026-12-01",
-  "attachments": []
- },
- "items/ex4": {
-  "id": "ex4",
-  "ref": "WPC-2026-004",
-  "title": "(Example) Move Quality Lab reporting line to Operations",
-  "category": "Organisation development",
-  "sub": "Reporting line change",
-  "dept": "Quality",
-  "owner": "OD Superintendent",
-  "request": "Lab Supervisor to report to Operations Manager instead of Quality Manager.",
-  "status": "OPEN",
-  "createdAt": "2026-10-22",
-  "example": true,
-  "attachments": []
- },
- "items/ex5": {
-  "id": "ex5",
-  "ref": "WPC-2026-005",
-  "title": "(Example) Job title change: Planner to Maintenance Planner",
+  "title": "Job title change: Planner to Maintenance Planner",
   "category": "Organisation development",
   "sub": "Job title change",
   "dept": "Maintenance",
   "owner": "OD Superintendent",
-  "request": "Align the job title with the job description.",
+  "request": "Align the job title with the approved job description. No change in grade, pay or reporting line.",
   "status": "CLOSED",
-  "closedDate": "2026-10-30",
-  "evidence": "(Example) Title updated in the HR system on 30 Oct 2026; letter issued to employee.",
-  "createdAt": "2026-10-01",
+  "createdAt": "2026-06-09",
   "example": true,
+  "hcRequested": null,
+  "grade": "",
+  "budgeted": "Not applicable",
+  "annualCost": null,
+  "effectiveDate": "2026-07-24",
+  "attachments": [],
+  "closedDate": "2026-07-06",
+  "evidence": "Title updated in the HR system, letter issued.",
+  "closedBy": "u_sec"
+ },
+ "items/exi04": {
+  "id": "exi04",
+  "ref": "WPC-2026-004",
+  "title": "Scaffolding contractor for the shutdown, 12 workers",
+  "category": "New contractor request",
+  "sub": "New contractor",
+  "dept": "Maintenance",
+  "owner": "Maintenance Manager",
+  "request": "Contractor manpower for the planned shutdown: 12 scaffolders for 3 months. Covered by the shutdown budget.",
+  "status": "CLOSED",
+  "createdAt": "2026-07-06",
+  "example": true,
+  "hcRequested": 12,
+  "grade": "",
+  "budgeted": "Budgeted",
+  "annualCost": 54000,
+  "effectiveDate": "2026-08-28",
+  "attachments": [],
+  "closedDate": "2026-10-22",
+  "evidence": "Contract completed at the end of the shutdown.",
+  "closedBy": "u_sec"
+ },
+ "items/exi05": {
+  "id": "exi05",
+  "ref": "WPC-2026-005",
+  "title": "Replacement: Shift Supervisor, Carbon baking",
+  "category": "Manpower requirement",
+  "sub": "Replacement",
+  "dept": "Carbon",
+  "owner": "Carbon Manager",
+  "request": "Replace a Shift Supervisor who retired. The position is in the approved structure.",
+  "status": "CLOSED",
+  "createdAt": "2026-07-08",
+  "example": true,
+  "hcRequested": 1,
+  "grade": "Grade 10",
+  "budgeted": "Budgeted",
+  "annualCost": 21600,
+  "effectiveDate": "2026-09-02",
+  "attachments": [],
+  "closedDate": "2026-09-17",
+  "evidence": "Internal candidate appointed.",
+  "closedBy": "u_sec"
+ },
+ "items/exi06": {
+  "id": "exi06",
+  "ref": "WPC-2026-006",
+  "title": "Move Quality Lab reporting line to Operations",
+  "category": "Organisation development",
+  "sub": "Reporting line change",
+  "dept": "Quality",
+  "owner": "OD Superintendent",
+  "request": "Lab Supervisor to report to the Operations Manager instead of the Quality Manager, so sampling follows the production schedule.",
+  "status": "CLOSED",
+  "createdAt": "2026-07-10",
+  "example": true,
+  "hcRequested": null,
+  "grade": "",
+  "budgeted": "Not applicable",
+  "annualCost": null,
+  "effectiveDate": "2026-10-02",
+  "attachments": [],
+  "closedDate": "2026-09-04",
+  "evidence": "Organisation chart published.",
+  "closedBy": "u_sec",
+  "returned": true
+ },
+ "items/exi07": {
+  "id": "exi07",
+  "ref": "WPC-2026-007",
+  "title": "One Reliability Engineer, non-budgeted",
+  "category": "Manpower requirement",
+  "sub": "New position (non-budgeted)",
+  "dept": "Maintenance",
+  "owner": "Maintenance Manager",
+  "request": "One non-budgeted Reliability Engineer to lead the critical-equipment programme. Cost to be funded from savings on contractor hours.",
+  "status": "OPEN",
+  "createdAt": "2026-08-05",
+  "example": true,
+  "hcRequested": 1,
+  "grade": "Grade 11",
+  "budgeted": "Non-budgeted",
+  "annualCost": 30000,
+  "effectiveDate": "2026-12-01",
   "attachments": []
+ },
+ "items/exi08": {
+  "id": "exi08",
+  "ref": "WPC-2026-008",
+  "title": "Extension of canteen services contractor headcount",
+  "category": "New contractor request",
+  "sub": "Change in contractor headcount",
+  "dept": "HR",
+  "owner": "HR Manager",
+  "request": "Increase the canteen contractor from 18 to 22 staff to cover the second dining hall.",
+  "status": "CLOSED",
+  "createdAt": "2026-08-07",
+  "example": true,
+  "hcRequested": 4,
+  "grade": "",
+  "budgeted": "Budgeted",
+  "annualCost": 9600,
+  "effectiveDate": "2026-09-27",
+  "attachments": [],
+  "closedDate": "2026-09-06",
+  "evidence": "Contract amended.",
+  "closedBy": "u_sec"
+ },
+ "items/exi09": {
+  "id": "exi09",
+  "ref": "WPC-2026-009",
+  "title": "Renewal of expatriate contract: Power Plant Specialist",
+  "category": "Expatriate contract renewal",
+  "sub": "Renewal with changes",
+  "dept": "Power Plant",
+  "owner": "HR Manager",
+  "request": "Renew for 1 year instead of 2, with a training obligation for the national successor.",
+  "status": "OPEN",
+  "createdAt": "2026-08-09",
+  "example": true,
+  "hcRequested": 1,
+  "grade": "Grade 13",
+  "budgeted": "Budgeted",
+  "annualCost": 48000,
+  "effectiveDate": "2026-11-21",
+  "attachments": []
+ },
+ "items/exi10": {
+  "id": "exi10",
+  "ref": "WPC-2026-010",
+  "title": "New position in structure: Energy Efficiency Lead",
+  "category": "Organisation development",
+  "sub": "New position in structure",
+  "dept": "Power Plant",
+  "owner": "OD Superintendent",
+  "request": "Create one position to own the energy efficiency roadmap across Power Plant and Potline.",
+  "status": "OPEN",
+  "createdAt": "2026-08-11",
+  "example": true,
+  "hcRequested": 1,
+  "grade": "Grade 12",
+  "budgeted": "Non-budgeted",
+  "annualCost": 36000,
+  "effectiveDate": "2027-01-10",
+  "attachments": []
+ },
+ "items/exi11": {
+  "id": "exi11",
+  "ref": "WPC-2026-011",
+  "title": "Three Operators for Potline, replacement of leavers",
+  "category": "Manpower requirement",
+  "sub": "Replacement",
+  "dept": "Potline",
+  "owner": "Potline Manager",
+  "request": "Replace three operators who left in the last quarter. Positions are in the approved structure.",
+  "status": "OPEN",
+  "createdAt": "2026-09-06",
+  "example": true,
+  "hcRequested": 3,
+  "grade": "Grade 6",
+  "budgeted": "Budgeted",
+  "annualCost": 21600,
+  "effectiveDate": "2026-10-22",
+  "attachments": []
+ },
+ "items/exi12": {
+  "id": "exi12",
+  "ref": "WPC-2026-012",
+  "title": "Grade review: Laboratory Analysts",
+  "category": "Organisation development",
+  "sub": "Grade review",
+  "dept": "Quality",
+  "owner": "OD Superintendent",
+  "request": "Review the grade of four Laboratory Analysts after the job evaluation exercise.",
+  "status": "OPEN",
+  "createdAt": "2026-09-08",
+  "example": true,
+  "hcRequested": 4,
+  "grade": "Grade 7",
+  "budgeted": "Non-budgeted",
+  "annualCost": 7200,
+  "effectiveDate": "2026-12-11",
+  "attachments": []
+ },
+ "items/exi13": {
+  "id": "exi13",
+  "ref": "WPC-2026-013",
+  "title": "IT service desk contractor, contract extension",
+  "category": "New contractor request",
+  "sub": "Contract extension",
+  "dept": "IT",
+  "owner": "IT Manager",
+  "request": "Extend the service desk contract for 12 months with the same headcount of 5.",
+  "status": "CLOSED",
+  "createdAt": "2026-09-10",
+  "example": true,
+  "hcRequested": 5,
+  "grade": "",
+  "budgeted": "Budgeted",
+  "annualCost": 33000,
+  "effectiveDate": "2026-11-01",
+  "attachments": [],
+  "closedDate": "2026-10-04",
+  "evidence": "Contract extension signed.",
+  "closedBy": "u_sec"
+ },
+ "items/exi14": {
+  "id": "exi14",
+  "ref": "WPC-2026-014",
+  "title": "Transfer: Safety Advisor from Casthouse to Carbon",
+  "category": "Manpower requirement",
+  "sub": "Transfer",
+  "dept": "HSE",
+  "owner": "HSE Manager",
+  "request": "Transfer one Safety Advisor to cover the new baking furnace. Casthouse cover is confirmed.",
+  "status": "CLOSED",
+  "createdAt": "2026-09-12",
+  "example": true,
+  "hcRequested": 1,
+  "grade": "Grade 9",
+  "budgeted": "Budgeted",
+  "annualCost": null,
+  "effectiveDate": "2026-10-27",
+  "attachments": [],
+  "closedDate": "2026-10-06",
+  "evidence": "Transfer letter issued and effective.",
+  "closedBy": "u_sec"
+ },
+ "items/exi15": {
+  "id": "exi15",
+  "ref": "WPC-2026-015",
+  "title": "Non-renewal: expatriate Procurement Specialist",
+  "category": "Expatriate contract renewal",
+  "sub": "Non-renewal",
+  "dept": "Supply Chain",
+  "owner": "HR Manager",
+  "request": "The national successor is ready. Supply Chain asks not to renew and to confirm the successor in the role.",
+  "status": "OPEN",
+  "createdAt": "2026-10-08",
+  "example": true,
+  "hcRequested": 1,
+  "grade": "Grade 11",
+  "budgeted": "Budgeted",
+  "annualCost": null,
+  "effectiveDate": "2026-12-21",
+  "attachments": []
+ },
+ "items/exi16": {
+  "id": "exi16",
+  "ref": "WPC-2026-016",
+  "title": "Two Maintenance Planners for the new CMMS rollout",
+  "category": "Manpower requirement",
+  "sub": "New position (budgeted)",
+  "dept": "Maintenance",
+  "owner": "Maintenance Manager",
+  "request": "Two budgeted planners to run work-order planning when the new maintenance system goes live.",
+  "status": "OPEN",
+  "createdAt": "2026-10-09",
+  "example": true,
+  "hcRequested": 2,
+  "grade": "Grade 9",
+  "budgeted": "Budgeted",
+  "annualCost": 26400,
+  "effectiveDate": "2026-12-26",
+  "attachments": []
+ },
+ "items/exi17": {
+  "id": "exi17",
+  "ref": "WPC-2026-017",
+  "title": "Finance: Cost Analyst, non-budgeted",
+  "category": "Manpower requirement",
+  "sub": "New position (non-budgeted)",
+  "dept": "Finance",
+  "owner": "Finance Manager",
+  "request": "One Cost Analyst to support monthly manpower cost reporting to the committee.",
+  "status": "OPEN",
+  "createdAt": "2026-10-10",
+  "example": true,
+  "hcRequested": 1,
+  "grade": "Grade 9",
+  "budgeted": "Non-budgeted",
+  "annualCost": 14400,
+  "effectiveDate": "2027-01-10",
+  "attachments": []
+ },
+ "items/exi18": {
+  "id": "exi18",
+  "ref": "WPC-2026-018",
+  "title": "One Safety Officer for the Carbon area",
+  "category": "Manpower requirement",
+  "sub": "New position (budgeted)",
+  "dept": "Carbon",
+  "owner": "Carbon Manager",
+  "request": "One budgeted Safety Officer to cover the new baking furnace shift.",
+  "status": "OPEN",
+  "createdAt": "2026-10-30",
+  "example": true,
+  "hcRequested": 1,
+  "grade": "Grade 9",
+  "budgeted": "Budgeted",
+  "annualCost": 15000,
+  "effectiveDate": "2027-01-20",
+  "attachments": []
+ },
+ "items/exi19": {
+  "id": "exi19",
+  "ref": "WPC-2026-019",
+  "title": "Renewal of expatriate contract: Casthouse Metallurgist",
+  "category": "Expatriate contract renewal",
+  "sub": "Renewal on same terms",
+  "dept": "Casthouse",
+  "owner": "HR Manager",
+  "request": "Renew for 2 years. Alloy development work continues through next year and the successor is in year one of the development plan.",
+  "status": "OPEN",
+  "createdAt": "2026-11-01",
+  "example": true,
+  "hcRequested": 1,
+  "grade": "Grade 12",
+  "budgeted": "Budgeted",
+  "annualCost": 43200,
+  "effectiveDate": "2027-01-30",
+  "attachments": []
+ },
+ "items/exi20": {
+  "id": "exi20",
+  "ref": "WPC-2026-020",
+  "title": "Contractor for anode rodding shop, 8 workers",
+  "category": "New contractor request",
+  "sub": "New contractor",
+  "dept": "Carbon",
+  "owner": "Carbon Manager",
+  "request": "Eight contractor workers for 6 months while the rodding shop upgrade is commissioned.",
+  "status": "OPEN",
+  "createdAt": "2026-11-02",
+  "example": true,
+  "hcRequested": 8,
+  "grade": "",
+  "budgeted": "Non-budgeted",
+  "annualCost": 28800,
+  "effectiveDate": "2026-12-11",
+  "attachments": []
+ },
+ "items/exi21": {
+  "id": "exi21",
+  "ref": "WPC-2026-021",
+  "title": "Job title change: HR Officer to HR Business Partner",
+  "category": "Organisation development",
+  "sub": "Job title change",
+  "dept": "HR",
+  "owner": "OD Superintendent",
+  "request": "Align three job titles with the new HR operating model. No change in grade.",
+  "status": "OPEN",
+  "createdAt": "2026-11-03",
+  "example": true,
+  "hcRequested": null,
+  "grade": "",
+  "budgeted": "Not applicable",
+  "annualCost": null,
+  "effectiveDate": "2026-12-11",
+  "attachments": []
+ },
+ "actions/exa1": {
+  "id": "exa1",
+  "itemId": "exi01",
+  "meetingId": "exm1",
+  "text": "Present the successor plan for the role",
+  "owner": "Potline Manager",
+  "due": "2026-07-09",
+  "status": "DONE",
+  "doneDate": "2026-07-07"
+ },
+ "minutes/exm1__exi01": {
+  "meetingId": "exm1",
+  "itemId": "exi01",
+  "discussion": "The committee asked for the Omanisation successor plan before deciding.",
+  "outcome": "Deferred",
+  "hcApproved": null,
+  "decision": "Deferred to the next meeting. Potline to present the successor plan.",
+  "updatedAt": "2026-06-14T10:00:00Z",
+  "updatedBy": "u_sec",
+  "rev": 1
+ },
+ "actions/exa2": {
+  "id": "exa2",
+  "itemId": "exi02",
+  "meetingId": "exm1",
+  "text": "Open the two vacancies and start recruitment",
+  "owner": "HR Manager",
+  "due": "2026-07-14",
+  "status": "DONE",
+  "doneDate": "2026-07-12"
+ },
+ "minutes/exm1__exi02": {
+  "meetingId": "exm1",
+  "itemId": "exi02",
+  "discussion": "Shift pattern change confirmed by Operations. Positions are in the budget.",
+  "outcome": "Approved",
+  "hcApproved": 2,
+  "decision": "Approved: two Process Technicians.",
+  "updatedAt": "2026-06-14T10:00:00Z",
+  "updatedBy": "u_sec",
+  "rev": 1
+ },
+ "actions/exa3": {
+  "id": "exa3",
+  "itemId": "exi03",
+  "meetingId": "exm1",
+  "text": "Update the title in the HR system and issue the letter",
+  "owner": "OD Superintendent",
+  "due": "2026-07-04",
+  "status": "DONE",
+  "doneDate": "2026-07-02"
+ },
+ "minutes/exm1__exi03": {
+  "meetingId": "exm1",
+  "itemId": "exi03",
+  "discussion": "No objections.",
+  "outcome": "Approved",
+  "hcApproved": null,
+  "decision": "Approved. Title to change from the first of next month.",
+  "updatedAt": "2026-06-14T10:00:00Z",
+  "updatedBy": "u_sec",
+  "rev": 1
+ },
+ "signatures/u_mem": {
+  "exm1": {
+   "v": 1,
+   "status": "signed",
+   "role": "member",
+   "at": "2026-06-17T08:30:00Z",
+   "comment": "",
+   "history": [
+    {
+     "v": 1,
+     "status": "signed",
+     "role": "member",
+     "at": "2026-06-17T08:30:00Z",
+     "comment": ""
+    }
+   ]
+  },
+  "exm2": {
+   "v": 1,
+   "status": "signed",
+   "role": "member",
+   "at": "2026-07-17T08:30:00Z",
+   "comment": "",
+   "history": [
+    {
+     "v": 1,
+     "status": "signed",
+     "role": "member",
+     "at": "2026-07-17T08:30:00Z",
+     "comment": ""
+    }
+   ]
+  },
+  "exm3": {
+   "v": 1,
+   "status": "signed",
+   "role": "member",
+   "at": "2026-08-16T08:30:00Z",
+   "comment": "",
+   "history": [
+    {
+     "v": 1,
+     "status": "signed",
+     "role": "member",
+     "at": "2026-08-16T08:30:00Z",
+     "comment": ""
+    }
+   ]
+  },
+  "exm4": {
+   "v": 1,
+   "status": "signed",
+   "role": "member",
+   "at": "2026-09-15T08:30:00Z",
+   "comment": "",
+   "history": [
+    {
+     "v": 1,
+     "status": "signed",
+     "role": "member",
+     "at": "2026-09-15T08:30:00Z",
+     "comment": ""
+    }
+   ]
+  }
+ },
+ "signatures/u_m2": {
+  "exm1": {
+   "v": 1,
+   "status": "signed",
+   "role": "member",
+   "at": "2026-06-18T08:30:00Z",
+   "comment": "",
+   "history": [
+    {
+     "v": 1,
+     "status": "signed",
+     "role": "member",
+     "at": "2026-06-18T08:30:00Z",
+     "comment": ""
+    }
+   ]
+  },
+  "exm2": {
+   "v": 1,
+   "status": "signed",
+   "role": "member",
+   "at": "2026-07-18T08:30:00Z",
+   "comment": "",
+   "history": [
+    {
+     "v": 1,
+     "status": "signed",
+     "role": "member",
+     "at": "2026-07-18T08:30:00Z",
+     "comment": ""
+    }
+   ]
+  },
+  "exm3": {
+   "v": 1,
+   "status": "signed",
+   "role": "member",
+   "at": "2026-08-17T08:30:00Z",
+   "comment": "",
+   "history": [
+    {
+     "v": 1,
+     "status": "signed",
+     "role": "member",
+     "at": "2026-08-17T08:30:00Z",
+     "comment": ""
+    }
+   ]
+  },
+  "exm4": {
+   "v": 1,
+   "status": "signed",
+   "role": "member",
+   "at": "2026-09-16T08:30:00Z",
+   "comment": "",
+   "history": [
+    {
+     "v": 1,
+     "status": "signed",
+     "role": "member",
+     "at": "2026-09-16T08:30:00Z",
+     "comment": ""
+    }
+   ]
+  },
+  "exm5": {
+   "v": 1,
+   "status": "signed",
+   "role": "member",
+   "at": "2026-10-18T08:30:00Z",
+   "comment": "",
+   "history": [
+    {
+     "v": 1,
+     "status": "signed",
+     "role": "member",
+     "at": "2026-10-18T08:30:00Z",
+     "comment": ""
+    }
+   ]
+  }
+ },
+ "signatures/u_m3": {
+  "exm1": {
+   "v": 1,
+   "status": "signed",
+   "role": "member",
+   "at": "2026-06-19T08:30:00Z",
+   "comment": "",
+   "history": [
+    {
+     "v": 1,
+     "status": "signed",
+     "role": "member",
+     "at": "2026-06-19T08:30:00Z",
+     "comment": ""
+    }
+   ]
+  },
+  "exm2": {
+   "v": 1,
+   "status": "signed",
+   "role": "member",
+   "at": "2026-07-19T08:30:00Z",
+   "comment": "",
+   "history": [
+    {
+     "v": 1,
+     "status": "signed",
+     "role": "member",
+     "at": "2026-07-19T08:30:00Z",
+     "comment": ""
+    }
+   ]
+  },
+  "exm3": {
+   "v": 1,
+   "status": "signed",
+   "role": "member",
+   "at": "2026-08-18T08:30:00Z",
+   "comment": "",
+   "history": [
+    {
+     "v": 1,
+     "status": "signed",
+     "role": "member",
+     "at": "2026-08-18T08:30:00Z",
+     "comment": ""
+    }
+   ]
+  },
+  "exm4": {
+   "v": 1,
+   "status": "signed",
+   "role": "member",
+   "at": "2026-09-17T08:30:00Z",
+   "comment": "",
+   "history": [
+    {
+     "v": 1,
+     "status": "signed",
+     "role": "member",
+     "at": "2026-09-17T08:30:00Z",
+     "comment": ""
+    }
+   ]
+  },
+  "exm5": {
+   "v": 1,
+   "status": "signed",
+   "role": "member",
+   "at": "2026-10-19T08:30:00Z",
+   "comment": "",
+   "history": [
+    {
+     "v": 1,
+     "status": "signed",
+     "role": "member",
+     "at": "2026-10-19T08:30:00Z",
+     "comment": ""
+    }
+   ]
+  }
+ },
+ "signatures/u_m4": {
+  "exm1": {
+   "v": 1,
+   "status": "signed",
+   "role": "member",
+   "at": "2026-06-17T08:30:00Z",
+   "comment": "",
+   "history": [
+    {
+     "v": 1,
+     "status": "signed",
+     "role": "member",
+     "at": "2026-06-17T08:30:00Z",
+     "comment": ""
+    }
+   ]
+  },
+  "exm2": {
+   "v": 1,
+   "status": "signed",
+   "role": "member",
+   "at": "2026-07-17T08:30:00Z",
+   "comment": "",
+   "history": [
+    {
+     "v": 1,
+     "status": "signed",
+     "role": "member",
+     "at": "2026-07-17T08:30:00Z",
+     "comment": ""
+    }
+   ]
+  },
+  "exm3": {
+   "v": 1,
+   "status": "signed",
+   "role": "member",
+   "at": "2026-08-16T08:30:00Z",
+   "comment": "",
+   "history": [
+    {
+     "v": 1,
+     "status": "signed",
+     "role": "member",
+     "at": "2026-08-16T08:30:00Z",
+     "comment": ""
+    }
+   ]
+  },
+  "exm4": {
+   "v": 1,
+   "status": "signed",
+   "role": "member",
+   "at": "2026-09-15T08:30:00Z",
+   "comment": "",
+   "history": [
+    {
+     "v": 1,
+     "status": "signed",
+     "role": "member",
+     "at": "2026-09-15T08:30:00Z",
+     "comment": ""
+    }
+   ]
+  }
+ },
+ "signatures/u_m5": {
+  "exm1": {
+   "v": 1,
+   "status": "signed",
+   "role": "member",
+   "at": "2026-06-18T08:30:00Z",
+   "comment": "",
+   "history": [
+    {
+     "v": 1,
+     "status": "signed",
+     "role": "member",
+     "at": "2026-06-18T08:30:00Z",
+     "comment": ""
+    }
+   ]
+  },
+  "exm2": {
+   "v": 1,
+   "status": "signed",
+   "role": "member",
+   "at": "2026-07-18T08:30:00Z",
+   "comment": "",
+   "history": [
+    {
+     "v": 1,
+     "status": "signed",
+     "role": "member",
+     "at": "2026-07-18T08:30:00Z",
+     "comment": ""
+    }
+   ]
+  },
+  "exm3": {
+   "v": 1,
+   "status": "signed",
+   "role": "member",
+   "at": "2026-08-17T08:30:00Z",
+   "comment": "",
+   "history": [
+    {
+     "v": 1,
+     "status": "signed",
+     "role": "member",
+     "at": "2026-08-17T08:30:00Z",
+     "comment": ""
+    }
+   ]
+  },
+  "exm4": {
+   "v": 1,
+   "status": "signed",
+   "role": "member",
+   "at": "2026-09-16T08:30:00Z",
+   "comment": "",
+   "history": [
+    {
+     "v": 1,
+     "status": "signed",
+     "role": "member",
+     "at": "2026-09-16T08:30:00Z",
+     "comment": ""
+    }
+   ]
+  },
+  "exm5": {
+   "v": 1,
+   "status": "signed",
+   "role": "member",
+   "at": "2026-10-18T08:30:00Z",
+   "comment": "",
+   "history": [
+    {
+     "v": 1,
+     "status": "signed",
+     "role": "member",
+     "at": "2026-10-18T08:30:00Z",
+     "comment": ""
+    }
+   ]
+  }
+ },
+ "signatures/u_chair": {
+  "exm1:chair": {
+   "v": 1,
+   "status": "approved",
+   "role": "chairman",
+   "at": "2026-06-21T11:00:00Z",
+   "comment": "",
+   "history": [
+    {
+     "v": 1,
+     "status": "approved",
+     "role": "chairman",
+     "at": "2026-06-21T11:00:00Z",
+     "comment": ""
+    }
+   ]
+  },
+  "exm2:chair": {
+   "v": 1,
+   "status": "approved",
+   "role": "chairman",
+   "at": "2026-07-21T11:00:00Z",
+   "comment": "",
+   "history": [
+    {
+     "v": 1,
+     "status": "approved",
+     "role": "chairman",
+     "at": "2026-07-21T11:00:00Z",
+     "comment": ""
+    }
+   ]
+  },
+  "exm3:chair": {
+   "v": 1,
+   "status": "approved",
+   "role": "chairman",
+   "at": "2026-08-20T11:00:00Z",
+   "comment": "",
+   "history": [
+    {
+     "v": 1,
+     "status": "approved",
+     "role": "chairman",
+     "at": "2026-08-20T11:00:00Z",
+     "comment": ""
+    }
+   ]
+  },
+  "exm4:chair": {
+   "v": 1,
+   "status": "approved",
+   "role": "chairman",
+   "at": "2026-09-19T11:00:00Z",
+   "comment": "",
+   "history": [
+    {
+     "v": 1,
+     "status": "approved",
+     "role": "chairman",
+     "at": "2026-09-19T11:00:00Z",
+     "comment": ""
+    }
+   ]
+  }
  },
  "meetings/exm1": {
   "id": "exm1",
   "ref": "M-2026-01",
-  "title": "(Example) WPC Meeting, October",
-  "date": "2026-10-14",
+  "title": "WPC Meeting, June",
+  "date": "2026-06-14",
+  "time": "09:00",
+  "location": "Admin Building, Meeting Room 2",
   "status": "archived",
   "version": 1,
   "agenda": [
-   "ex1",
-   "ex5"
+   "exi01",
+   "exi02",
+   "exi03"
   ],
-  "members": [],
+  "members": [
+   "u_mem",
+   "u_m2",
+   "u_m3",
+   "u_m4",
+   "u_m5"
+  ],
+  "chairman": "u_chair",
   "versions": [
    {
     "v": 1,
-    "at": "2026-10-16T09:00:00Z",
-    "by": ""
+    "at": "2026-06-16T09:00:00Z",
+    "by": "u_sec"
    }
   ],
-  "archivedAt": "2026-10-21T09:00:00Z",
+  "attendance": {
+   "u_mem": "Present",
+   "u_m2": "Present",
+   "u_m3": "Present",
+   "u_m4": "Present",
+   "u_m5": "Apology",
+   "u_chair": "Present"
+  },
   "example": true,
   "snapshot": {
    "v": 1,
-   "at": "2026-10-16T09:00:00Z",
+   "at": "2026-06-16T09:00:00Z",
+   "time": "09:00",
+   "location": "Admin Building, Meeting Room 2",
+   "attendance": {
+    "u_mem": "Present",
+    "u_m2": "Present",
+    "u_m3": "Present",
+    "u_m4": "Present",
+    "u_m5": "Apology",
+    "u_chair": "Present"
+   },
    "items": [
     {
-     "id": "ex1",
+     "id": "exi01",
      "ref": "WPC-2026-001",
-     "title": "(Example) Renewal of expatriate contract: Senior Reduction Engineer",
+     "title": "Renewal of expatriate contract: Senior Reduction Engineer",
      "category": "Expatriate contract renewal",
      "sub": "Renewal on same terms",
      "dept": "Potline",
-     "request": "Potline asks to renew the contract of one expatriate Senior Reduction Engineer, ending 31 Dec 2026, for 2 years.",
-     "discussion": "Committee asked for the Omanisation successor plan for this role before deciding.",
-     "decision": "Deferred to next meeting. Potline to present the successor plan.",
-     "actions": [
-      {
-       "text": "Present successor plan for the role",
-       "owner": "Potline Manager",
-       "due": "2026-11-05"
-      }
-     ],
-     "outcome": "Deferred",
+     "owner": "HR Manager",
+     "request": "Potline asks to renew the contract of one expatriate Senior Reduction Engineer for 2 years. The role covers pot-control tuning and no qualified successor is ready yet. A successor plan is attached to the request.",
+     "annualCost": 42000,
      "hcRequested": 1,
      "grade": "Grade 12",
      "budgeted": "Budgeted",
-     "effectiveDate": "2027-01-01"
+     "effectiveDate": "2026-12-31",
+     "outcome": "Deferred",
+     "hcApproved": null,
+     "discussion": "The committee asked for the Omanisation successor plan before deciding.",
+     "decision": "Deferred to the next meeting. Potline to present the successor plan.",
+     "actions": [
+      {
+       "text": "Present the successor plan for the role",
+       "owner": "Potline Manager",
+       "due": "2026-07-09"
+      }
+     ]
     },
     {
-     "id": "ex5",
-     "ref": "WPC-2026-005",
-     "title": "(Example) Job title change: Planner to Maintenance Planner",
+     "id": "exi02",
+     "ref": "WPC-2026-002",
+     "title": "Two Process Technicians for the Casthouse shift pattern",
+     "category": "Manpower requirement",
+     "sub": "New position (budgeted)",
+     "dept": "Casthouse",
+     "owner": "Casthouse Manager",
+     "request": "Two budgeted technician positions to cover the move from a 3-crew to a 4-crew shift pattern in the casting area.",
+     "annualCost": 18000,
+     "hcRequested": 2,
+     "grade": "Grade 8",
+     "budgeted": "Budgeted",
+     "effectiveDate": "2026-09-12",
+     "outcome": "Approved",
+     "hcApproved": 2,
+     "discussion": "Shift pattern change confirmed by Operations. Positions are in the budget.",
+     "decision": "Approved: two Process Technicians.",
+     "actions": [
+      {
+       "text": "Open the two vacancies and start recruitment",
+       "owner": "HR Manager",
+       "due": "2026-07-14"
+      }
+     ]
+    },
+    {
+     "id": "exi03",
+     "ref": "WPC-2026-003",
+     "title": "Job title change: Planner to Maintenance Planner",
      "category": "Organisation development",
      "sub": "Job title change",
      "dept": "Maintenance",
-     "request": "Align the job title with the job description.",
+     "owner": "OD Superintendent",
+     "request": "Align the job title with the approved job description. No change in grade, pay or reporting line.",
+     "annualCost": null,
+     "hcRequested": null,
+     "grade": "",
+     "budgeted": "Not applicable",
+     "effectiveDate": "2026-07-24",
+     "outcome": "Approved",
+     "hcApproved": null,
      "discussion": "No objections.",
-     "decision": "Approved.",
+     "decision": "Approved. Title to change from the first of next month.",
      "actions": [
       {
-       "text": "Update title in HR system and issue letter",
+       "text": "Update the title in the HR system and issue the letter",
        "owner": "OD Superintendent",
-       "due": "2026-10-31"
+       "due": "2026-07-04"
       }
-     ],
-     "outcome": "Approved"
+     ]
     }
    ]
   },
-  "time": "09:00",
-  "location": "(Example) Admin Building, Meeting Room 2",
-  "attendance": {}
+  "snapshots": {
+   "1": {
+    "v": 1,
+    "at": "2026-06-16T09:00:00Z",
+    "time": "09:00",
+    "location": "Admin Building, Meeting Room 2",
+    "attendance": {
+     "u_mem": "Present",
+     "u_m2": "Present",
+     "u_m3": "Present",
+     "u_m4": "Present",
+     "u_m5": "Apology",
+     "u_chair": "Present"
+    },
+    "items": [
+     {
+      "id": "exi01",
+      "ref": "WPC-2026-001",
+      "title": "Renewal of expatriate contract: Senior Reduction Engineer",
+      "category": "Expatriate contract renewal",
+      "sub": "Renewal on same terms",
+      "dept": "Potline",
+      "owner": "HR Manager",
+      "request": "Potline asks to renew the contract of one expatriate Senior Reduction Engineer for 2 years. The role covers pot-control tuning and no qualified successor is ready yet. A successor plan is attached to the request.",
+      "annualCost": 42000,
+      "hcRequested": 1,
+      "grade": "Grade 12",
+      "budgeted": "Budgeted",
+      "effectiveDate": "2026-12-31",
+      "outcome": "Deferred",
+      "hcApproved": null,
+      "discussion": "The committee asked for the Omanisation successor plan before deciding.",
+      "decision": "Deferred to the next meeting. Potline to present the successor plan.",
+      "actions": [
+       {
+        "text": "Present the successor plan for the role",
+        "owner": "Potline Manager",
+        "due": "2026-07-09"
+       }
+      ]
+     },
+     {
+      "id": "exi02",
+      "ref": "WPC-2026-002",
+      "title": "Two Process Technicians for the Casthouse shift pattern",
+      "category": "Manpower requirement",
+      "sub": "New position (budgeted)",
+      "dept": "Casthouse",
+      "owner": "Casthouse Manager",
+      "request": "Two budgeted technician positions to cover the move from a 3-crew to a 4-crew shift pattern in the casting area.",
+      "annualCost": 18000,
+      "hcRequested": 2,
+      "grade": "Grade 8",
+      "budgeted": "Budgeted",
+      "effectiveDate": "2026-09-12",
+      "outcome": "Approved",
+      "hcApproved": 2,
+      "discussion": "Shift pattern change confirmed by Operations. Positions are in the budget.",
+      "decision": "Approved: two Process Technicians.",
+      "actions": [
+       {
+        "text": "Open the two vacancies and start recruitment",
+        "owner": "HR Manager",
+        "due": "2026-07-14"
+       }
+      ]
+     },
+     {
+      "id": "exi03",
+      "ref": "WPC-2026-003",
+      "title": "Job title change: Planner to Maintenance Planner",
+      "category": "Organisation development",
+      "sub": "Job title change",
+      "dept": "Maintenance",
+      "owner": "OD Superintendent",
+      "request": "Align the job title with the approved job description. No change in grade, pay or reporting line.",
+      "annualCost": null,
+      "hcRequested": null,
+      "grade": "",
+      "budgeted": "Not applicable",
+      "effectiveDate": "2026-07-24",
+      "outcome": "Approved",
+      "hcApproved": null,
+      "discussion": "No objections.",
+      "decision": "Approved. Title to change from the first of next month.",
+      "actions": [
+       {
+        "text": "Update the title in the HR system and issue the letter",
+        "owner": "OD Superintendent",
+        "due": "2026-07-04"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  "archivedAt": "2026-06-23T09:00:00Z"
+ },
+ "actions/exa4": {
+  "id": "exa4",
+  "itemId": "exi01",
+  "meetingId": "exm2",
+  "text": "Issue the renewal letter and update the contract record",
+  "owner": "HR Manager",
+  "due": "2026-08-08",
+  "status": "DONE",
+  "doneDate": "2026-08-06"
+ },
+ "actions/exa5": {
+  "id": "exa5",
+  "itemId": "exi01",
+  "meetingId": "exm2",
+  "text": "Report successor progress to the committee",
+  "owner": "Potline Manager",
+  "due": "2027-01-05",
+  "status": "OPEN"
+ },
+ "minutes/exm2__exi01": {
+  "meetingId": "exm2",
+  "itemId": "exi01",
+  "discussion": "Successor plan presented: a national engineer will be ready in 18 months.",
+  "outcome": "Approved with conditions",
+  "hcApproved": 1,
+  "decision": "Approved: renew for 2 years, on condition that the successor plan is reviewed every 6 months.",
+  "updatedAt": "2026-07-14T10:00:00Z",
+  "updatedBy": "u_sec",
+  "rev": 1
+ },
+ "actions/exa6": {
+  "id": "exa6",
+  "itemId": "exi04",
+  "meetingId": "exm2",
+  "text": "Raise the contract with Supply Chain",
+  "owner": "Maintenance Manager",
+  "due": "2026-08-03",
+  "status": "DONE",
+  "doneDate": "2026-08-01"
+ },
+ "minutes/exm2__exi04": {
+  "meetingId": "exm2",
+  "itemId": "exi04",
+  "discussion": "Shutdown scope and dates confirmed. Cost is inside the shutdown budget.",
+  "outcome": "Approved",
+  "hcApproved": 12,
+  "decision": "Approved: 12 contractor scaffolders for 3 months.",
+  "updatedAt": "2026-07-14T10:00:00Z",
+  "updatedBy": "u_sec",
+  "rev": 1
+ },
+ "actions/exa7": {
+  "id": "exa7",
+  "itemId": "exi05",
+  "meetingId": "exm2",
+  "text": "Advertise internally for two weeks",
+  "owner": "HR Manager",
+  "due": "2026-08-03",
+  "status": "DONE",
+  "doneDate": "2026-08-01"
+ },
+ "minutes/exm2__exi05": {
+  "meetingId": "exm2",
+  "itemId": "exi05",
+  "discussion": "Position is in the structure. Internal candidates to be considered first.",
+  "outcome": "Approved",
+  "hcApproved": 1,
+  "decision": "Approved: replacement, internal candidates first.",
+  "updatedAt": "2026-07-14T10:00:00Z",
+  "updatedBy": "u_sec",
+  "rev": 1
+ },
+ "actions/exa8": {
+  "id": "exa8",
+  "itemId": "exi06",
+  "meetingId": "exm2",
+  "text": "Prepare the independence note with Quality",
+  "owner": "OD Superintendent",
+  "due": "2026-08-08",
+  "status": "DONE",
+  "doneDate": "2026-08-06"
+ },
+ "minutes/exm2__exi06": {
+  "meetingId": "exm2",
+  "itemId": "exi06",
+  "discussion": "Quality raised a concern on the independence of the lab. More detail requested.",
+  "outcome": "Returned for clarification",
+  "hcApproved": null,
+  "decision": "Returned to OD: show how lab independence is kept under the new line.",
+  "updatedAt": "2026-07-14T10:00:00Z",
+  "updatedBy": "u_sec",
+  "rev": 1
  },
  "meetings/exm2": {
   "id": "exm2",
   "ref": "M-2026-02",
-  "title": "(Example) WPC Meeting, November",
-  "date": "2026-11-11",
-  "status": "draft",
-  "version": 0,
-  "agenda": [
-   "ex1",
-   "ex2",
-   "ex3",
-   "ex4"
-  ],
-  "members": [],
-  "versions": [],
-  "example": true,
+  "title": "WPC Meeting, July",
+  "date": "2026-07-14",
   "time": "09:00",
-  "location": "(Example) Admin Building, Meeting Room 2",
-  "attendance": {}
+  "location": "Admin Building, Meeting Room 2",
+  "status": "archived",
+  "version": 1,
+  "agenda": [
+   "exi01",
+   "exi04",
+   "exi05",
+   "exi06"
+  ],
+  "members": [
+   "u_mem",
+   "u_m2",
+   "u_m3",
+   "u_m4",
+   "u_m5"
+  ],
+  "chairman": "u_chair",
+  "versions": [
+   {
+    "v": 1,
+    "at": "2026-07-16T09:00:00Z",
+    "by": "u_sec"
+   }
+  ],
+  "attendance": {
+   "u_mem": "Present",
+   "u_m2": "Present",
+   "u_m3": "Present",
+   "u_m4": "Apology",
+   "u_m5": "Present",
+   "u_chair": "Present"
+  },
+  "example": true,
+  "snapshot": {
+   "v": 1,
+   "at": "2026-07-16T09:00:00Z",
+   "time": "09:00",
+   "location": "Admin Building, Meeting Room 2",
+   "attendance": {
+    "u_mem": "Present",
+    "u_m2": "Present",
+    "u_m3": "Present",
+    "u_m4": "Apology",
+    "u_m5": "Present",
+    "u_chair": "Present"
+   },
+   "items": [
+    {
+     "id": "exi01",
+     "ref": "WPC-2026-001",
+     "title": "Renewal of expatriate contract: Senior Reduction Engineer",
+     "category": "Expatriate contract renewal",
+     "sub": "Renewal on same terms",
+     "dept": "Potline",
+     "owner": "HR Manager",
+     "request": "Potline asks to renew the contract of one expatriate Senior Reduction Engineer for 2 years. The role covers pot-control tuning and no qualified successor is ready yet. A successor plan is attached to the request.",
+     "annualCost": 42000,
+     "hcRequested": 1,
+     "grade": "Grade 12",
+     "budgeted": "Budgeted",
+     "effectiveDate": "2026-12-31",
+     "outcome": "Approved with conditions",
+     "hcApproved": 1,
+     "discussion": "Successor plan presented: a national engineer will be ready in 18 months.",
+     "decision": "Approved: renew for 2 years, on condition that the successor plan is reviewed every 6 months.",
+     "actions": [
+      {
+       "text": "Issue the renewal letter and update the contract record",
+       "owner": "HR Manager",
+       "due": "2026-08-08"
+      },
+      {
+       "text": "Report successor progress to the committee",
+       "owner": "Potline Manager",
+       "due": "2027-01-05"
+      }
+     ]
+    },
+    {
+     "id": "exi04",
+     "ref": "WPC-2026-004",
+     "title": "Scaffolding contractor for the shutdown, 12 workers",
+     "category": "New contractor request",
+     "sub": "New contractor",
+     "dept": "Maintenance",
+     "owner": "Maintenance Manager",
+     "request": "Contractor manpower for the planned shutdown: 12 scaffolders for 3 months. Covered by the shutdown budget.",
+     "annualCost": 54000,
+     "hcRequested": 12,
+     "grade": "",
+     "budgeted": "Budgeted",
+     "effectiveDate": "2026-08-28",
+     "outcome": "Approved",
+     "hcApproved": 12,
+     "discussion": "Shutdown scope and dates confirmed. Cost is inside the shutdown budget.",
+     "decision": "Approved: 12 contractor scaffolders for 3 months.",
+     "actions": [
+      {
+       "text": "Raise the contract with Supply Chain",
+       "owner": "Maintenance Manager",
+       "due": "2026-08-03"
+      }
+     ]
+    },
+    {
+     "id": "exi05",
+     "ref": "WPC-2026-005",
+     "title": "Replacement: Shift Supervisor, Carbon baking",
+     "category": "Manpower requirement",
+     "sub": "Replacement",
+     "dept": "Carbon",
+     "owner": "Carbon Manager",
+     "request": "Replace a Shift Supervisor who retired. The position is in the approved structure.",
+     "annualCost": 21600,
+     "hcRequested": 1,
+     "grade": "Grade 10",
+     "budgeted": "Budgeted",
+     "effectiveDate": "2026-09-02",
+     "outcome": "Approved",
+     "hcApproved": 1,
+     "discussion": "Position is in the structure. Internal candidates to be considered first.",
+     "decision": "Approved: replacement, internal candidates first.",
+     "actions": [
+      {
+       "text": "Advertise internally for two weeks",
+       "owner": "HR Manager",
+       "due": "2026-08-03"
+      }
+     ]
+    },
+    {
+     "id": "exi06",
+     "ref": "WPC-2026-006",
+     "title": "Move Quality Lab reporting line to Operations",
+     "category": "Organisation development",
+     "sub": "Reporting line change",
+     "dept": "Quality",
+     "owner": "OD Superintendent",
+     "request": "Lab Supervisor to report to the Operations Manager instead of the Quality Manager, so sampling follows the production schedule.",
+     "annualCost": null,
+     "hcRequested": null,
+     "grade": "",
+     "budgeted": "Not applicable",
+     "effectiveDate": "2026-10-02",
+     "outcome": "Returned for clarification",
+     "hcApproved": null,
+     "discussion": "Quality raised a concern on the independence of the lab. More detail requested.",
+     "decision": "Returned to OD: show how lab independence is kept under the new line.",
+     "actions": [
+      {
+       "text": "Prepare the independence note with Quality",
+       "owner": "OD Superintendent",
+       "due": "2026-08-08"
+      }
+     ]
+    }
+   ]
+  },
+  "snapshots": {
+   "1": {
+    "v": 1,
+    "at": "2026-07-16T09:00:00Z",
+    "time": "09:00",
+    "location": "Admin Building, Meeting Room 2",
+    "attendance": {
+     "u_mem": "Present",
+     "u_m2": "Present",
+     "u_m3": "Present",
+     "u_m4": "Apology",
+     "u_m5": "Present",
+     "u_chair": "Present"
+    },
+    "items": [
+     {
+      "id": "exi01",
+      "ref": "WPC-2026-001",
+      "title": "Renewal of expatriate contract: Senior Reduction Engineer",
+      "category": "Expatriate contract renewal",
+      "sub": "Renewal on same terms",
+      "dept": "Potline",
+      "owner": "HR Manager",
+      "request": "Potline asks to renew the contract of one expatriate Senior Reduction Engineer for 2 years. The role covers pot-control tuning and no qualified successor is ready yet. A successor plan is attached to the request.",
+      "annualCost": 42000,
+      "hcRequested": 1,
+      "grade": "Grade 12",
+      "budgeted": "Budgeted",
+      "effectiveDate": "2026-12-31",
+      "outcome": "Approved with conditions",
+      "hcApproved": 1,
+      "discussion": "Successor plan presented: a national engineer will be ready in 18 months.",
+      "decision": "Approved: renew for 2 years, on condition that the successor plan is reviewed every 6 months.",
+      "actions": [
+       {
+        "text": "Issue the renewal letter and update the contract record",
+        "owner": "HR Manager",
+        "due": "2026-08-08"
+       },
+       {
+        "text": "Report successor progress to the committee",
+        "owner": "Potline Manager",
+        "due": "2027-01-05"
+       }
+      ]
+     },
+     {
+      "id": "exi04",
+      "ref": "WPC-2026-004",
+      "title": "Scaffolding contractor for the shutdown, 12 workers",
+      "category": "New contractor request",
+      "sub": "New contractor",
+      "dept": "Maintenance",
+      "owner": "Maintenance Manager",
+      "request": "Contractor manpower for the planned shutdown: 12 scaffolders for 3 months. Covered by the shutdown budget.",
+      "annualCost": 54000,
+      "hcRequested": 12,
+      "grade": "",
+      "budgeted": "Budgeted",
+      "effectiveDate": "2026-08-28",
+      "outcome": "Approved",
+      "hcApproved": 12,
+      "discussion": "Shutdown scope and dates confirmed. Cost is inside the shutdown budget.",
+      "decision": "Approved: 12 contractor scaffolders for 3 months.",
+      "actions": [
+       {
+        "text": "Raise the contract with Supply Chain",
+        "owner": "Maintenance Manager",
+        "due": "2026-08-03"
+       }
+      ]
+     },
+     {
+      "id": "exi05",
+      "ref": "WPC-2026-005",
+      "title": "Replacement: Shift Supervisor, Carbon baking",
+      "category": "Manpower requirement",
+      "sub": "Replacement",
+      "dept": "Carbon",
+      "owner": "Carbon Manager",
+      "request": "Replace a Shift Supervisor who retired. The position is in the approved structure.",
+      "annualCost": 21600,
+      "hcRequested": 1,
+      "grade": "Grade 10",
+      "budgeted": "Budgeted",
+      "effectiveDate": "2026-09-02",
+      "outcome": "Approved",
+      "hcApproved": 1,
+      "discussion": "Position is in the structure. Internal candidates to be considered first.",
+      "decision": "Approved: replacement, internal candidates first.",
+      "actions": [
+       {
+        "text": "Advertise internally for two weeks",
+        "owner": "HR Manager",
+        "due": "2026-08-03"
+       }
+      ]
+     },
+     {
+      "id": "exi06",
+      "ref": "WPC-2026-006",
+      "title": "Move Quality Lab reporting line to Operations",
+      "category": "Organisation development",
+      "sub": "Reporting line change",
+      "dept": "Quality",
+      "owner": "OD Superintendent",
+      "request": "Lab Supervisor to report to the Operations Manager instead of the Quality Manager, so sampling follows the production schedule.",
+      "annualCost": null,
+      "hcRequested": null,
+      "grade": "",
+      "budgeted": "Not applicable",
+      "effectiveDate": "2026-10-02",
+      "outcome": "Returned for clarification",
+      "hcApproved": null,
+      "discussion": "Quality raised a concern on the independence of the lab. More detail requested.",
+      "decision": "Returned to OD: show how lab independence is kept under the new line.",
+      "actions": [
+       {
+        "text": "Prepare the independence note with Quality",
+        "owner": "OD Superintendent",
+        "due": "2026-08-08"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  "archivedAt": "2026-07-23T09:00:00Z"
  },
- "minutes/exm1__ex1": {
-  "meetingId": "exm1",
-  "itemId": "ex1",
-  "discussion": "Committee asked for the Omanisation successor plan for this role before deciding.",
-  "decision": "Deferred to next meeting. Potline to present the successor plan.",
-  "updatedAt": "2026-10-14T10:00:00Z",
-  "outcome": "Deferred"
+ "actions/exa9": {
+  "id": "exa9",
+  "itemId": "exi06",
+  "meetingId": "exm3",
+  "text": "Publish the updated organisation chart",
+  "owner": "OD Superintendent",
+  "due": "2026-09-02",
+  "status": "DONE",
+  "doneDate": "2026-08-31"
  },
- "minutes/exm1__ex5": {
-  "meetingId": "exm1",
-  "itemId": "ex5",
-  "discussion": "No objections.",
-  "decision": "Approved.",
-  "updatedAt": "2026-10-14T10:05:00Z",
-  "outcome": "Approved"
- },
- "minutes/exm2__ex1": {
-  "meetingId": "exm2",
-  "itemId": "ex1",
-  "discussion": "Successor plan presented: Omani engineer ready in 18 months.",
-  "decision": "Recommended: renew for 2 years. HR to complete the renewal.",
-  "updatedAt": "2026-11-10T06:00:00Z",
+ "minutes/exm3__exi06": {
+  "meetingId": "exm3",
+  "itemId": "exi06",
+  "discussion": "Independence note accepted: results are released by Quality, scheduling by Operations.",
   "outcome": "Approved",
-  "hcApproved": 1
+  "hcApproved": null,
+  "decision": "Approved: reporting line moves to Operations.",
+  "updatedAt": "2026-08-13T10:00:00Z",
+  "updatedBy": "u_sec",
+  "rev": 1
  },
- "actions/exa1": {
-  "id": "exa1",
-  "itemId": "ex1",
-  "meetingId": "exm1",
-  "text": "Present successor plan for the role",
-  "owner": "Potline Manager",
+ "actions/exa10": {
+  "id": "exa10",
+  "itemId": "exi07",
+  "meetingId": "exm3",
+  "text": "Confirm the savings figure with Finance",
+  "owner": "Maintenance Manager",
+  "due": "2026-09-07",
+  "status": "DONE",
+  "doneDate": "2026-09-05"
+ },
+ "minutes/exm3__exi07": {
+  "meetingId": "exm3",
+  "itemId": "exi07",
+  "discussion": "Members discussed the funding. Finance asked for the savings to be confirmed first.",
+  "outcome": "Deferred",
+  "hcApproved": null,
+  "decision": "Deferred. Maintenance and Finance to confirm the contractor-hour savings.",
+  "updatedAt": "2026-08-13T10:00:00Z",
+  "updatedBy": "u_sec",
+  "rev": 1
+ },
+ "actions/exa11": {
+  "id": "exa11",
+  "itemId": "exi08",
+  "meetingId": "exm3",
+  "text": "Amend the contract headcount",
+  "owner": "HR Manager",
+  "due": "2026-09-02",
+  "status": "DONE",
+  "doneDate": "2026-08-31"
+ },
+ "minutes/exm3__exi08": {
+  "meetingId": "exm3",
+  "itemId": "exi08",
+  "discussion": "Second dining hall opens next month. Cost is covered.",
+  "outcome": "Approved",
+  "hcApproved": 4,
+  "decision": "Approved: contractor headcount from 18 to 22.",
+  "updatedAt": "2026-08-13T10:00:00Z",
+  "updatedBy": "u_sec",
+  "rev": 1
+ },
+ "actions/exa12": {
+  "id": "exa12",
+  "itemId": "exi09",
+  "meetingId": "exm3",
+  "text": "Issue the renewal with the training clause",
+  "owner": "HR Manager",
+  "due": "2026-09-12",
+  "status": "DONE",
+  "doneDate": "2026-09-10"
+ },
+ "actions/exa13": {
+  "id": "exa13",
+  "itemId": "exi09",
+  "meetingId": "exm3",
+  "text": "Agree the handover plan with the specialist",
+  "owner": "Power Plant Manager",
+  "due": "2026-11-29",
+  "status": "IN_PROGRESS"
+ },
+ "minutes/exm3__exi09": {
+  "meetingId": "exm3",
+  "itemId": "exi09",
+  "discussion": "Members agreed a shorter renewal with a clear handover plan.",
+  "outcome": "Approved with conditions",
+  "hcApproved": 1,
+  "decision": "Approved: renew for 1 year with a training obligation for the successor.",
+  "updatedAt": "2026-08-13T10:00:00Z",
+  "updatedBy": "u_sec",
+  "rev": 1
+ },
+ "actions/exa14": {
+  "id": "exa14",
+  "itemId": "exi10",
+  "meetingId": "exm3",
+  "text": "Prepare the EXCO paper",
+  "owner": "OD Superintendent",
+  "due": "2026-09-22",
+  "status": "DONE",
+  "doneDate": "2026-09-20"
+ },
+ "minutes/exm3__exi10": {
+  "meetingId": "exm3",
+  "itemId": "exi10",
+  "discussion": "The position changes the approved structure and is not budgeted.",
+  "outcome": "Recommended to EXCO",
+  "hcApproved": 1,
+  "decision": "Recommended to EXCO for approval of the new position.",
+  "updatedAt": "2026-08-13T10:00:00Z",
+  "updatedBy": "u_sec",
+  "rev": 1
+ },
+ "meetings/exm3": {
+  "id": "exm3",
+  "ref": "M-2026-03",
+  "title": "WPC Meeting, August",
+  "date": "2026-08-13",
+  "time": "09:00",
+  "location": "Admin Building, Meeting Room 2",
+  "status": "archived",
+  "version": 1,
+  "agenda": [
+   "exi06",
+   "exi07",
+   "exi08",
+   "exi09",
+   "exi10"
+  ],
+  "members": [
+   "u_mem",
+   "u_m2",
+   "u_m3",
+   "u_m4",
+   "u_m5"
+  ],
+  "chairman": "u_chair",
+  "versions": [
+   {
+    "v": 1,
+    "at": "2026-08-15T09:00:00Z",
+    "by": "u_sec"
+   }
+  ],
+  "attendance": {
+   "u_mem": "Present",
+   "u_m2": "Present",
+   "u_m3": "Apology",
+   "u_m4": "Present",
+   "u_m5": "Present",
+   "u_chair": "Present"
+  },
+  "example": true,
+  "snapshot": {
+   "v": 1,
+   "at": "2026-08-15T09:00:00Z",
+   "time": "09:00",
+   "location": "Admin Building, Meeting Room 2",
+   "attendance": {
+    "u_mem": "Present",
+    "u_m2": "Present",
+    "u_m3": "Apology",
+    "u_m4": "Present",
+    "u_m5": "Present",
+    "u_chair": "Present"
+   },
+   "items": [
+    {
+     "id": "exi06",
+     "ref": "WPC-2026-006",
+     "title": "Move Quality Lab reporting line to Operations",
+     "category": "Organisation development",
+     "sub": "Reporting line change",
+     "dept": "Quality",
+     "owner": "OD Superintendent",
+     "request": "Lab Supervisor to report to the Operations Manager instead of the Quality Manager, so sampling follows the production schedule.",
+     "annualCost": null,
+     "hcRequested": null,
+     "grade": "",
+     "budgeted": "Not applicable",
+     "effectiveDate": "2026-10-02",
+     "outcome": "Approved",
+     "hcApproved": null,
+     "discussion": "Independence note accepted: results are released by Quality, scheduling by Operations.",
+     "decision": "Approved: reporting line moves to Operations.",
+     "actions": [
+      {
+       "text": "Publish the updated organisation chart",
+       "owner": "OD Superintendent",
+       "due": "2026-09-02"
+      }
+     ]
+    },
+    {
+     "id": "exi07",
+     "ref": "WPC-2026-007",
+     "title": "One Reliability Engineer, non-budgeted",
+     "category": "Manpower requirement",
+     "sub": "New position (non-budgeted)",
+     "dept": "Maintenance",
+     "owner": "Maintenance Manager",
+     "request": "One non-budgeted Reliability Engineer to lead the critical-equipment programme. Cost to be funded from savings on contractor hours.",
+     "annualCost": 30000,
+     "hcRequested": 1,
+     "grade": "Grade 11",
+     "budgeted": "Non-budgeted",
+     "effectiveDate": "2026-12-01",
+     "outcome": "Deferred",
+     "hcApproved": null,
+     "discussion": "Members discussed the funding. Finance asked for the savings to be confirmed first.",
+     "decision": "Deferred. Maintenance and Finance to confirm the contractor-hour savings.",
+     "actions": [
+      {
+       "text": "Confirm the savings figure with Finance",
+       "owner": "Maintenance Manager",
+       "due": "2026-09-07"
+      }
+     ]
+    },
+    {
+     "id": "exi08",
+     "ref": "WPC-2026-008",
+     "title": "Extension of canteen services contractor headcount",
+     "category": "New contractor request",
+     "sub": "Change in contractor headcount",
+     "dept": "HR",
+     "owner": "HR Manager",
+     "request": "Increase the canteen contractor from 18 to 22 staff to cover the second dining hall.",
+     "annualCost": 9600,
+     "hcRequested": 4,
+     "grade": "",
+     "budgeted": "Budgeted",
+     "effectiveDate": "2026-09-27",
+     "outcome": "Approved",
+     "hcApproved": 4,
+     "discussion": "Second dining hall opens next month. Cost is covered.",
+     "decision": "Approved: contractor headcount from 18 to 22.",
+     "actions": [
+      {
+       "text": "Amend the contract headcount",
+       "owner": "HR Manager",
+       "due": "2026-09-02"
+      }
+     ]
+    },
+    {
+     "id": "exi09",
+     "ref": "WPC-2026-009",
+     "title": "Renewal of expatriate contract: Power Plant Specialist",
+     "category": "Expatriate contract renewal",
+     "sub": "Renewal with changes",
+     "dept": "Power Plant",
+     "owner": "HR Manager",
+     "request": "Renew for 1 year instead of 2, with a training obligation for the national successor.",
+     "annualCost": 48000,
+     "hcRequested": 1,
+     "grade": "Grade 13",
+     "budgeted": "Budgeted",
+     "effectiveDate": "2026-11-21",
+     "outcome": "Approved with conditions",
+     "hcApproved": 1,
+     "discussion": "Members agreed a shorter renewal with a clear handover plan.",
+     "decision": "Approved: renew for 1 year with a training obligation for the successor.",
+     "actions": [
+      {
+       "text": "Issue the renewal with the training clause",
+       "owner": "HR Manager",
+       "due": "2026-09-12"
+      },
+      {
+       "text": "Agree the handover plan with the specialist",
+       "owner": "Power Plant Manager",
+       "due": "2026-11-29"
+      }
+     ]
+    },
+    {
+     "id": "exi10",
+     "ref": "WPC-2026-010",
+     "title": "New position in structure: Energy Efficiency Lead",
+     "category": "Organisation development",
+     "sub": "New position in structure",
+     "dept": "Power Plant",
+     "owner": "OD Superintendent",
+     "request": "Create one position to own the energy efficiency roadmap across Power Plant and Potline.",
+     "annualCost": 36000,
+     "hcRequested": 1,
+     "grade": "Grade 12",
+     "budgeted": "Non-budgeted",
+     "effectiveDate": "2027-01-10",
+     "outcome": "Recommended to EXCO",
+     "hcApproved": 1,
+     "discussion": "The position changes the approved structure and is not budgeted.",
+     "decision": "Recommended to EXCO for approval of the new position.",
+     "actions": [
+      {
+       "text": "Prepare the EXCO paper",
+       "owner": "OD Superintendent",
+       "due": "2026-09-22"
+      }
+     ]
+    }
+   ]
+  },
+  "snapshots": {
+   "1": {
+    "v": 1,
+    "at": "2026-08-15T09:00:00Z",
+    "time": "09:00",
+    "location": "Admin Building, Meeting Room 2",
+    "attendance": {
+     "u_mem": "Present",
+     "u_m2": "Present",
+     "u_m3": "Apology",
+     "u_m4": "Present",
+     "u_m5": "Present",
+     "u_chair": "Present"
+    },
+    "items": [
+     {
+      "id": "exi06",
+      "ref": "WPC-2026-006",
+      "title": "Move Quality Lab reporting line to Operations",
+      "category": "Organisation development",
+      "sub": "Reporting line change",
+      "dept": "Quality",
+      "owner": "OD Superintendent",
+      "request": "Lab Supervisor to report to the Operations Manager instead of the Quality Manager, so sampling follows the production schedule.",
+      "annualCost": null,
+      "hcRequested": null,
+      "grade": "",
+      "budgeted": "Not applicable",
+      "effectiveDate": "2026-10-02",
+      "outcome": "Approved",
+      "hcApproved": null,
+      "discussion": "Independence note accepted: results are released by Quality, scheduling by Operations.",
+      "decision": "Approved: reporting line moves to Operations.",
+      "actions": [
+       {
+        "text": "Publish the updated organisation chart",
+        "owner": "OD Superintendent",
+        "due": "2026-09-02"
+       }
+      ]
+     },
+     {
+      "id": "exi07",
+      "ref": "WPC-2026-007",
+      "title": "One Reliability Engineer, non-budgeted",
+      "category": "Manpower requirement",
+      "sub": "New position (non-budgeted)",
+      "dept": "Maintenance",
+      "owner": "Maintenance Manager",
+      "request": "One non-budgeted Reliability Engineer to lead the critical-equipment programme. Cost to be funded from savings on contractor hours.",
+      "annualCost": 30000,
+      "hcRequested": 1,
+      "grade": "Grade 11",
+      "budgeted": "Non-budgeted",
+      "effectiveDate": "2026-12-01",
+      "outcome": "Deferred",
+      "hcApproved": null,
+      "discussion": "Members discussed the funding. Finance asked for the savings to be confirmed first.",
+      "decision": "Deferred. Maintenance and Finance to confirm the contractor-hour savings.",
+      "actions": [
+       {
+        "text": "Confirm the savings figure with Finance",
+        "owner": "Maintenance Manager",
+        "due": "2026-09-07"
+       }
+      ]
+     },
+     {
+      "id": "exi08",
+      "ref": "WPC-2026-008",
+      "title": "Extension of canteen services contractor headcount",
+      "category": "New contractor request",
+      "sub": "Change in contractor headcount",
+      "dept": "HR",
+      "owner": "HR Manager",
+      "request": "Increase the canteen contractor from 18 to 22 staff to cover the second dining hall.",
+      "annualCost": 9600,
+      "hcRequested": 4,
+      "grade": "",
+      "budgeted": "Budgeted",
+      "effectiveDate": "2026-09-27",
+      "outcome": "Approved",
+      "hcApproved": 4,
+      "discussion": "Second dining hall opens next month. Cost is covered.",
+      "decision": "Approved: contractor headcount from 18 to 22.",
+      "actions": [
+       {
+        "text": "Amend the contract headcount",
+        "owner": "HR Manager",
+        "due": "2026-09-02"
+       }
+      ]
+     },
+     {
+      "id": "exi09",
+      "ref": "WPC-2026-009",
+      "title": "Renewal of expatriate contract: Power Plant Specialist",
+      "category": "Expatriate contract renewal",
+      "sub": "Renewal with changes",
+      "dept": "Power Plant",
+      "owner": "HR Manager",
+      "request": "Renew for 1 year instead of 2, with a training obligation for the national successor.",
+      "annualCost": 48000,
+      "hcRequested": 1,
+      "grade": "Grade 13",
+      "budgeted": "Budgeted",
+      "effectiveDate": "2026-11-21",
+      "outcome": "Approved with conditions",
+      "hcApproved": 1,
+      "discussion": "Members agreed a shorter renewal with a clear handover plan.",
+      "decision": "Approved: renew for 1 year with a training obligation for the successor.",
+      "actions": [
+       {
+        "text": "Issue the renewal with the training clause",
+        "owner": "HR Manager",
+        "due": "2026-09-12"
+       },
+       {
+        "text": "Agree the handover plan with the specialist",
+        "owner": "Power Plant Manager",
+        "due": "2026-11-29"
+       }
+      ]
+     },
+     {
+      "id": "exi10",
+      "ref": "WPC-2026-010",
+      "title": "New position in structure: Energy Efficiency Lead",
+      "category": "Organisation development",
+      "sub": "New position in structure",
+      "dept": "Power Plant",
+      "owner": "OD Superintendent",
+      "request": "Create one position to own the energy efficiency roadmap across Power Plant and Potline.",
+      "annualCost": 36000,
+      "hcRequested": 1,
+      "grade": "Grade 12",
+      "budgeted": "Non-budgeted",
+      "effectiveDate": "2027-01-10",
+      "outcome": "Recommended to EXCO",
+      "hcApproved": 1,
+      "discussion": "The position changes the approved structure and is not budgeted.",
+      "decision": "Recommended to EXCO for approval of the new position.",
+      "actions": [
+       {
+        "text": "Prepare the EXCO paper",
+        "owner": "OD Superintendent",
+        "due": "2026-09-22"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  "archivedAt": "2026-08-22T09:00:00Z"
+ },
+ "actions/exa15": {
+  "id": "exa15",
+  "itemId": "exi07",
+  "meetingId": "exm4",
+  "text": "Start recruitment",
+  "owner": "HR Manager",
+  "due": "2026-11-23",
+  "status": "IN_PROGRESS"
+ },
+ "minutes/exm4__exi07": {
+  "meetingId": "exm4",
+  "itemId": "exi07",
+  "discussion": "Finance confirmed savings cover 80% of the cost in year one.",
+  "outcome": "Approved with conditions",
+  "hcApproved": 1,
+  "decision": "Approved: one Reliability Engineer, to be reviewed after 12 months.",
+  "updatedAt": "2026-09-12T10:00:00Z",
+  "updatedBy": "u_sec",
+  "rev": 1
+ },
+ "actions/exa16": {
+  "id": "exa16",
+  "itemId": "exi11",
+  "meetingId": "exm4",
+  "text": "Start recruitment for three Operators",
+  "owner": "HR Manager",
+  "due": "2026-10-07",
+  "status": "DONE",
+  "doneDate": "2026-10-05"
+ },
+ "minutes/exm4__exi11": {
+  "meetingId": "exm4",
+  "itemId": "exi11",
+  "discussion": "Replacement of leavers, no change to the structure.",
+  "outcome": "Approved",
+  "hcApproved": 3,
+  "decision": "Approved: three Operators.",
+  "updatedAt": "2026-09-12T10:00:00Z",
+  "updatedBy": "u_sec",
+  "rev": 1
+ },
+ "actions/exa17": {
+  "id": "exa17",
+  "itemId": "exi12",
+  "meetingId": "exm4",
+  "text": "Issue grade letters to the two analysts",
+  "owner": "OD Superintendent",
+  "due": "2026-10-12",
+  "status": "DONE",
+  "doneDate": "2026-10-10"
+ },
+ "minutes/exm4__exi12": {
+  "meetingId": "exm4",
+  "itemId": "exi12",
+  "discussion": "Job evaluation results presented. Two of the four roles meet the higher grade.",
+  "outcome": "Approved with conditions",
+  "hcApproved": 2,
+  "decision": "Approved for two analysts. The other two stay at the current grade.",
+  "updatedAt": "2026-09-12T10:00:00Z",
+  "updatedBy": "u_sec",
+  "rev": 1
+ },
+ "actions/exa18": {
+  "id": "exa18",
+  "itemId": "exi13",
+  "meetingId": "exm4",
+  "text": "Extend the contract",
+  "owner": "IT Manager",
+  "due": "2026-10-02",
+  "status": "DONE",
+  "doneDate": "2026-09-30"
+ },
+ "minutes/exm4__exi13": {
+  "meetingId": "exm4",
+  "itemId": "exi13",
+  "discussion": "Service levels have been met through the year.",
+  "outcome": "Approved",
+  "hcApproved": 5,
+  "decision": "Approved: extend for 12 months, same headcount.",
+  "updatedAt": "2026-09-12T10:00:00Z",
+  "updatedBy": "u_sec",
+  "rev": 1
+ },
+ "actions/exa19": {
+  "id": "exa19",
+  "itemId": "exi14",
+  "meetingId": "exm4",
+  "text": "Issue the transfer letter",
+  "owner": "HR Manager",
+  "due": "2026-10-02",
+  "status": "DONE",
+  "doneDate": "2026-09-30"
+ },
+ "minutes/exm4__exi14": {
+  "meetingId": "exm4",
+  "itemId": "exi14",
+  "discussion": "Casthouse confirmed cover.",
+  "outcome": "Approved",
+  "hcApproved": 1,
+  "decision": "Approved: transfer from the first of next month.",
+  "updatedAt": "2026-09-12T10:00:00Z",
+  "updatedBy": "u_sec",
+  "rev": 1
+ },
+ "meetings/exm4": {
+  "id": "exm4",
+  "ref": "M-2026-04",
+  "title": "WPC Meeting, September",
+  "date": "2026-09-12",
+  "time": "09:00",
+  "location": "Admin Building, Meeting Room 2",
+  "status": "archived",
+  "version": 1,
+  "agenda": [
+   "exi07",
+   "exi11",
+   "exi12",
+   "exi13",
+   "exi14"
+  ],
+  "members": [
+   "u_mem",
+   "u_m2",
+   "u_m3",
+   "u_m4",
+   "u_m5"
+  ],
+  "chairman": "u_chair",
+  "versions": [
+   {
+    "v": 1,
+    "at": "2026-09-14T09:00:00Z",
+    "by": "u_sec"
+   }
+  ],
+  "attendance": {
+   "u_mem": "Present",
+   "u_m2": "Apology",
+   "u_m3": "Present",
+   "u_m4": "Present",
+   "u_m5": "Present",
+   "u_chair": "Present"
+  },
+  "example": true,
+  "snapshot": {
+   "v": 1,
+   "at": "2026-09-14T09:00:00Z",
+   "time": "09:00",
+   "location": "Admin Building, Meeting Room 2",
+   "attendance": {
+    "u_mem": "Present",
+    "u_m2": "Apology",
+    "u_m3": "Present",
+    "u_m4": "Present",
+    "u_m5": "Present",
+    "u_chair": "Present"
+   },
+   "items": [
+    {
+     "id": "exi07",
+     "ref": "WPC-2026-007",
+     "title": "One Reliability Engineer, non-budgeted",
+     "category": "Manpower requirement",
+     "sub": "New position (non-budgeted)",
+     "dept": "Maintenance",
+     "owner": "Maintenance Manager",
+     "request": "One non-budgeted Reliability Engineer to lead the critical-equipment programme. Cost to be funded from savings on contractor hours.",
+     "annualCost": 30000,
+     "hcRequested": 1,
+     "grade": "Grade 11",
+     "budgeted": "Non-budgeted",
+     "effectiveDate": "2026-12-01",
+     "outcome": "Approved with conditions",
+     "hcApproved": 1,
+     "discussion": "Finance confirmed savings cover 80% of the cost in year one.",
+     "decision": "Approved: one Reliability Engineer, to be reviewed after 12 months.",
+     "actions": [
+      {
+       "text": "Start recruitment",
+       "owner": "HR Manager",
+       "due": "2026-11-23"
+      }
+     ]
+    },
+    {
+     "id": "exi11",
+     "ref": "WPC-2026-011",
+     "title": "Three Operators for Potline, replacement of leavers",
+     "category": "Manpower requirement",
+     "sub": "Replacement",
+     "dept": "Potline",
+     "owner": "Potline Manager",
+     "request": "Replace three operators who left in the last quarter. Positions are in the approved structure.",
+     "annualCost": 21600,
+     "hcRequested": 3,
+     "grade": "Grade 6",
+     "budgeted": "Budgeted",
+     "effectiveDate": "2026-10-22",
+     "outcome": "Approved",
+     "hcApproved": 3,
+     "discussion": "Replacement of leavers, no change to the structure.",
+     "decision": "Approved: three Operators.",
+     "actions": [
+      {
+       "text": "Start recruitment for three Operators",
+       "owner": "HR Manager",
+       "due": "2026-10-07"
+      }
+     ]
+    },
+    {
+     "id": "exi12",
+     "ref": "WPC-2026-012",
+     "title": "Grade review: Laboratory Analysts",
+     "category": "Organisation development",
+     "sub": "Grade review",
+     "dept": "Quality",
+     "owner": "OD Superintendent",
+     "request": "Review the grade of four Laboratory Analysts after the job evaluation exercise.",
+     "annualCost": 7200,
+     "hcRequested": 4,
+     "grade": "Grade 7",
+     "budgeted": "Non-budgeted",
+     "effectiveDate": "2026-12-11",
+     "outcome": "Approved with conditions",
+     "hcApproved": 2,
+     "discussion": "Job evaluation results presented. Two of the four roles meet the higher grade.",
+     "decision": "Approved for two analysts. The other two stay at the current grade.",
+     "actions": [
+      {
+       "text": "Issue grade letters to the two analysts",
+       "owner": "OD Superintendent",
+       "due": "2026-10-12"
+      }
+     ]
+    },
+    {
+     "id": "exi13",
+     "ref": "WPC-2026-013",
+     "title": "IT service desk contractor, contract extension",
+     "category": "New contractor request",
+     "sub": "Contract extension",
+     "dept": "IT",
+     "owner": "IT Manager",
+     "request": "Extend the service desk contract for 12 months with the same headcount of 5.",
+     "annualCost": 33000,
+     "hcRequested": 5,
+     "grade": "",
+     "budgeted": "Budgeted",
+     "effectiveDate": "2026-11-01",
+     "outcome": "Approved",
+     "hcApproved": 5,
+     "discussion": "Service levels have been met through the year.",
+     "decision": "Approved: extend for 12 months, same headcount.",
+     "actions": [
+      {
+       "text": "Extend the contract",
+       "owner": "IT Manager",
+       "due": "2026-10-02"
+      }
+     ]
+    },
+    {
+     "id": "exi14",
+     "ref": "WPC-2026-014",
+     "title": "Transfer: Safety Advisor from Casthouse to Carbon",
+     "category": "Manpower requirement",
+     "sub": "Transfer",
+     "dept": "HSE",
+     "owner": "HSE Manager",
+     "request": "Transfer one Safety Advisor to cover the new baking furnace. Casthouse cover is confirmed.",
+     "annualCost": null,
+     "hcRequested": 1,
+     "grade": "Grade 9",
+     "budgeted": "Budgeted",
+     "effectiveDate": "2026-10-27",
+     "outcome": "Approved",
+     "hcApproved": 1,
+     "discussion": "Casthouse confirmed cover.",
+     "decision": "Approved: transfer from the first of next month.",
+     "actions": [
+      {
+       "text": "Issue the transfer letter",
+       "owner": "HR Manager",
+       "due": "2026-10-02"
+      }
+     ]
+    }
+   ]
+  },
+  "snapshots": {
+   "1": {
+    "v": 1,
+    "at": "2026-09-14T09:00:00Z",
+    "time": "09:00",
+    "location": "Admin Building, Meeting Room 2",
+    "attendance": {
+     "u_mem": "Present",
+     "u_m2": "Apology",
+     "u_m3": "Present",
+     "u_m4": "Present",
+     "u_m5": "Present",
+     "u_chair": "Present"
+    },
+    "items": [
+     {
+      "id": "exi07",
+      "ref": "WPC-2026-007",
+      "title": "One Reliability Engineer, non-budgeted",
+      "category": "Manpower requirement",
+      "sub": "New position (non-budgeted)",
+      "dept": "Maintenance",
+      "owner": "Maintenance Manager",
+      "request": "One non-budgeted Reliability Engineer to lead the critical-equipment programme. Cost to be funded from savings on contractor hours.",
+      "annualCost": 30000,
+      "hcRequested": 1,
+      "grade": "Grade 11",
+      "budgeted": "Non-budgeted",
+      "effectiveDate": "2026-12-01",
+      "outcome": "Approved with conditions",
+      "hcApproved": 1,
+      "discussion": "Finance confirmed savings cover 80% of the cost in year one.",
+      "decision": "Approved: one Reliability Engineer, to be reviewed after 12 months.",
+      "actions": [
+       {
+        "text": "Start recruitment",
+        "owner": "HR Manager",
+        "due": "2026-11-23"
+       }
+      ]
+     },
+     {
+      "id": "exi11",
+      "ref": "WPC-2026-011",
+      "title": "Three Operators for Potline, replacement of leavers",
+      "category": "Manpower requirement",
+      "sub": "Replacement",
+      "dept": "Potline",
+      "owner": "Potline Manager",
+      "request": "Replace three operators who left in the last quarter. Positions are in the approved structure.",
+      "annualCost": 21600,
+      "hcRequested": 3,
+      "grade": "Grade 6",
+      "budgeted": "Budgeted",
+      "effectiveDate": "2026-10-22",
+      "outcome": "Approved",
+      "hcApproved": 3,
+      "discussion": "Replacement of leavers, no change to the structure.",
+      "decision": "Approved: three Operators.",
+      "actions": [
+       {
+        "text": "Start recruitment for three Operators",
+        "owner": "HR Manager",
+        "due": "2026-10-07"
+       }
+      ]
+     },
+     {
+      "id": "exi12",
+      "ref": "WPC-2026-012",
+      "title": "Grade review: Laboratory Analysts",
+      "category": "Organisation development",
+      "sub": "Grade review",
+      "dept": "Quality",
+      "owner": "OD Superintendent",
+      "request": "Review the grade of four Laboratory Analysts after the job evaluation exercise.",
+      "annualCost": 7200,
+      "hcRequested": 4,
+      "grade": "Grade 7",
+      "budgeted": "Non-budgeted",
+      "effectiveDate": "2026-12-11",
+      "outcome": "Approved with conditions",
+      "hcApproved": 2,
+      "discussion": "Job evaluation results presented. Two of the four roles meet the higher grade.",
+      "decision": "Approved for two analysts. The other two stay at the current grade.",
+      "actions": [
+       {
+        "text": "Issue grade letters to the two analysts",
+        "owner": "OD Superintendent",
+        "due": "2026-10-12"
+       }
+      ]
+     },
+     {
+      "id": "exi13",
+      "ref": "WPC-2026-013",
+      "title": "IT service desk contractor, contract extension",
+      "category": "New contractor request",
+      "sub": "Contract extension",
+      "dept": "IT",
+      "owner": "IT Manager",
+      "request": "Extend the service desk contract for 12 months with the same headcount of 5.",
+      "annualCost": 33000,
+      "hcRequested": 5,
+      "grade": "",
+      "budgeted": "Budgeted",
+      "effectiveDate": "2026-11-01",
+      "outcome": "Approved",
+      "hcApproved": 5,
+      "discussion": "Service levels have been met through the year.",
+      "decision": "Approved: extend for 12 months, same headcount.",
+      "actions": [
+       {
+        "text": "Extend the contract",
+        "owner": "IT Manager",
+        "due": "2026-10-02"
+       }
+      ]
+     },
+     {
+      "id": "exi14",
+      "ref": "WPC-2026-014",
+      "title": "Transfer: Safety Advisor from Casthouse to Carbon",
+      "category": "Manpower requirement",
+      "sub": "Transfer",
+      "dept": "HSE",
+      "owner": "HSE Manager",
+      "request": "Transfer one Safety Advisor to cover the new baking furnace. Casthouse cover is confirmed.",
+      "annualCost": null,
+      "hcRequested": 1,
+      "grade": "Grade 9",
+      "budgeted": "Budgeted",
+      "effectiveDate": "2026-10-27",
+      "outcome": "Approved",
+      "hcApproved": 1,
+      "discussion": "Casthouse confirmed cover.",
+      "decision": "Approved: transfer from the first of next month.",
+      "actions": [
+       {
+        "text": "Issue the transfer letter",
+        "owner": "HR Manager",
+        "due": "2026-10-02"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  "archivedAt": "2026-09-21T09:00:00Z"
+ },
+ "actions/exa20": {
+  "id": "exa20",
+  "itemId": "exi15",
+  "meetingId": "exm5",
+  "text": "Notify the employee and plan the handover",
+  "owner": "HR Manager",
   "due": "2026-11-05",
   "status": "OPEN"
  },
- "actions/exa2": {
-  "id": "exa2",
-  "itemId": "ex5",
-  "meetingId": "exm1",
-  "text": "Update title in HR system and issue letter",
-  "owner": "OD Superintendent",
-  "due": "2026-10-31",
-  "status": "DONE",
-  "doneDate": "2026-10-30"
+ "minutes/exm5__exi15": {
+  "meetingId": "exm5",
+  "itemId": "exi15",
+  "discussion": "The successor has completed the development plan.",
+  "outcome": "Approved",
+  "hcApproved": 1,
+  "decision": "Approved: contract not renewed, successor confirmed in the role.",
+  "updatedAt": "2026-10-14T10:00:00Z",
+  "updatedBy": "u_sec",
+  "rev": 1
  },
- "actions/exa3": {
-  "id": "exa3",
-  "itemId": "ex1",
-  "meetingId": "exm2",
-  "text": "Issue renewal letter and update contract record",
+ "actions/exa21": {
+  "id": "exa21",
+  "itemId": "exi16",
+  "meetingId": "exm5",
+  "text": "Open the two vacancies",
   "owner": "HR Manager",
-  "due": "2026-12-01",
+  "due": "2026-11-21",
   "status": "OPEN"
  },
- "counters/refs": {
-  "item2026": 5,
-  "meeting2026": 2
+ "minutes/exm5__exi16": {
+  "meetingId": "exm5",
+  "itemId": "exi16",
+  "discussion": "Go-live date confirmed. Positions are budgeted.",
+  "outcome": "Approved",
+  "hcApproved": 2,
+  "decision": "Approved: two Maintenance Planners.",
+  "updatedAt": "2026-10-14T10:00:00Z",
+  "updatedBy": "u_sec",
+  "rev": 1
  },
- "requests/u_mem": {
+ "minutes/exm5__exi17": {
+  "meetingId": "exm5",
+  "itemId": "exi17",
+  "discussion": "Members asked whether existing Finance staff can absorb the work.",
+  "outcome": "Rejected",
+  "hcApproved": 0,
+  "decision": "Not approved. Finance to cover the reporting with the current team.",
+  "updatedAt": "2026-10-14T10:00:00Z",
+  "updatedBy": "u_sec",
+  "rev": 1
+ },
+ "actions/exa22": {
+  "id": "exa22",
+  "itemId": "exi10",
+  "meetingId": "exm5",
+  "text": "Add the position to the structure and grade it",
+  "owner": "OD Superintendent",
+  "due": "2026-11-08",
+  "status": "OPEN"
+ },
+ "minutes/exm5__exi10": {
+  "meetingId": "exm5",
+  "itemId": "exi10",
+  "discussion": "EXCO approved the position at its last meeting.",
+  "outcome": "Approved",
+  "hcApproved": 1,
+  "decision": "Noted: EXCO approval received. OD to add the position to the structure.",
+  "updatedAt": "2026-10-14T10:00:00Z",
+  "updatedBy": "u_sec",
+  "rev": 1
+ },
+ "meetings/exm5": {
+  "id": "exm5",
+  "ref": "M-2026-05",
+  "title": "WPC Meeting, October",
+  "date": "2026-10-14",
+  "time": "09:00",
+  "location": "Admin Building, Meeting Room 2",
+  "status": "circulated",
+  "version": 1,
+  "agenda": [
+   "exi15",
+   "exi16",
+   "exi17",
+   "exi10"
+  ],
+  "members": [
+   "u_mem",
+   "u_m2",
+   "u_m3",
+   "u_m4",
+   "u_m5"
+  ],
+  "chairman": "u_chair",
+  "versions": [
+   {
+    "v": 1,
+    "at": "2026-10-16T09:00:00Z",
+    "by": "u_sec"
+   }
+  ],
+  "attendance": {
+   "u_mem": "Apology",
+   "u_m2": "Present",
+   "u_m3": "Present",
+   "u_m4": "Present",
+   "u_m5": "Present",
+   "u_chair": "Present"
+  },
+  "example": true,
+  "snapshot": {
+   "v": 1,
+   "at": "2026-10-16T09:00:00Z",
+   "time": "09:00",
+   "location": "Admin Building, Meeting Room 2",
+   "attendance": {
+    "u_mem": "Apology",
+    "u_m2": "Present",
+    "u_m3": "Present",
+    "u_m4": "Present",
+    "u_m5": "Present",
+    "u_chair": "Present"
+   },
+   "items": [
+    {
+     "id": "exi15",
+     "ref": "WPC-2026-015",
+     "title": "Non-renewal: expatriate Procurement Specialist",
+     "category": "Expatriate contract renewal",
+     "sub": "Non-renewal",
+     "dept": "Supply Chain",
+     "owner": "HR Manager",
+     "request": "The national successor is ready. Supply Chain asks not to renew and to confirm the successor in the role.",
+     "annualCost": null,
+     "hcRequested": 1,
+     "grade": "Grade 11",
+     "budgeted": "Budgeted",
+     "effectiveDate": "2026-12-21",
+     "outcome": "Approved",
+     "hcApproved": 1,
+     "discussion": "The successor has completed the development plan.",
+     "decision": "Approved: contract not renewed, successor confirmed in the role.",
+     "actions": [
+      {
+       "text": "Notify the employee and plan the handover",
+       "owner": "HR Manager",
+       "due": "2026-11-05"
+      }
+     ]
+    },
+    {
+     "id": "exi16",
+     "ref": "WPC-2026-016",
+     "title": "Two Maintenance Planners for the new CMMS rollout",
+     "category": "Manpower requirement",
+     "sub": "New position (budgeted)",
+     "dept": "Maintenance",
+     "owner": "Maintenance Manager",
+     "request": "Two budgeted planners to run work-order planning when the new maintenance system goes live.",
+     "annualCost": 26400,
+     "hcRequested": 2,
+     "grade": "Grade 9",
+     "budgeted": "Budgeted",
+     "effectiveDate": "2026-12-26",
+     "outcome": "Approved",
+     "hcApproved": 2,
+     "discussion": "Go-live date confirmed. Positions are budgeted.",
+     "decision": "Approved: two Maintenance Planners.",
+     "actions": [
+      {
+       "text": "Open the two vacancies",
+       "owner": "HR Manager",
+       "due": "2026-11-21"
+      }
+     ]
+    },
+    {
+     "id": "exi17",
+     "ref": "WPC-2026-017",
+     "title": "Finance: Cost Analyst, non-budgeted",
+     "category": "Manpower requirement",
+     "sub": "New position (non-budgeted)",
+     "dept": "Finance",
+     "owner": "Finance Manager",
+     "request": "One Cost Analyst to support monthly manpower cost reporting to the committee.",
+     "annualCost": 14400,
+     "hcRequested": 1,
+     "grade": "Grade 9",
+     "budgeted": "Non-budgeted",
+     "effectiveDate": "2027-01-10",
+     "outcome": "Rejected",
+     "hcApproved": 0,
+     "discussion": "Members asked whether existing Finance staff can absorb the work.",
+     "decision": "Not approved. Finance to cover the reporting with the current team.",
+     "actions": []
+    },
+    {
+     "id": "exi10",
+     "ref": "WPC-2026-010",
+     "title": "New position in structure: Energy Efficiency Lead",
+     "category": "Organisation development",
+     "sub": "New position in structure",
+     "dept": "Power Plant",
+     "owner": "OD Superintendent",
+     "request": "Create one position to own the energy efficiency roadmap across Power Plant and Potline.",
+     "annualCost": 36000,
+     "hcRequested": 1,
+     "grade": "Grade 12",
+     "budgeted": "Non-budgeted",
+     "effectiveDate": "2027-01-10",
+     "outcome": "Approved",
+     "hcApproved": 1,
+     "discussion": "EXCO approved the position at its last meeting.",
+     "decision": "Noted: EXCO approval received. OD to add the position to the structure.",
+     "actions": [
+      {
+       "text": "Add the position to the structure and grade it",
+       "owner": "OD Superintendent",
+       "due": "2026-11-08"
+      }
+     ]
+    }
+   ]
+  },
+  "snapshots": {
+   "1": {
+    "v": 1,
+    "at": "2026-10-16T09:00:00Z",
+    "time": "09:00",
+    "location": "Admin Building, Meeting Room 2",
+    "attendance": {
+     "u_mem": "Apology",
+     "u_m2": "Present",
+     "u_m3": "Present",
+     "u_m4": "Present",
+     "u_m5": "Present",
+     "u_chair": "Present"
+    },
+    "items": [
+     {
+      "id": "exi15",
+      "ref": "WPC-2026-015",
+      "title": "Non-renewal: expatriate Procurement Specialist",
+      "category": "Expatriate contract renewal",
+      "sub": "Non-renewal",
+      "dept": "Supply Chain",
+      "owner": "HR Manager",
+      "request": "The national successor is ready. Supply Chain asks not to renew and to confirm the successor in the role.",
+      "annualCost": null,
+      "hcRequested": 1,
+      "grade": "Grade 11",
+      "budgeted": "Budgeted",
+      "effectiveDate": "2026-12-21",
+      "outcome": "Approved",
+      "hcApproved": 1,
+      "discussion": "The successor has completed the development plan.",
+      "decision": "Approved: contract not renewed, successor confirmed in the role.",
+      "actions": [
+       {
+        "text": "Notify the employee and plan the handover",
+        "owner": "HR Manager",
+        "due": "2026-11-05"
+       }
+      ]
+     },
+     {
+      "id": "exi16",
+      "ref": "WPC-2026-016",
+      "title": "Two Maintenance Planners for the new CMMS rollout",
+      "category": "Manpower requirement",
+      "sub": "New position (budgeted)",
+      "dept": "Maintenance",
+      "owner": "Maintenance Manager",
+      "request": "Two budgeted planners to run work-order planning when the new maintenance system goes live.",
+      "annualCost": 26400,
+      "hcRequested": 2,
+      "grade": "Grade 9",
+      "budgeted": "Budgeted",
+      "effectiveDate": "2026-12-26",
+      "outcome": "Approved",
+      "hcApproved": 2,
+      "discussion": "Go-live date confirmed. Positions are budgeted.",
+      "decision": "Approved: two Maintenance Planners.",
+      "actions": [
+       {
+        "text": "Open the two vacancies",
+        "owner": "HR Manager",
+        "due": "2026-11-21"
+       }
+      ]
+     },
+     {
+      "id": "exi17",
+      "ref": "WPC-2026-017",
+      "title": "Finance: Cost Analyst, non-budgeted",
+      "category": "Manpower requirement",
+      "sub": "New position (non-budgeted)",
+      "dept": "Finance",
+      "owner": "Finance Manager",
+      "request": "One Cost Analyst to support monthly manpower cost reporting to the committee.",
+      "annualCost": 14400,
+      "hcRequested": 1,
+      "grade": "Grade 9",
+      "budgeted": "Non-budgeted",
+      "effectiveDate": "2027-01-10",
+      "outcome": "Rejected",
+      "hcApproved": 0,
+      "discussion": "Members asked whether existing Finance staff can absorb the work.",
+      "decision": "Not approved. Finance to cover the reporting with the current team.",
+      "actions": []
+     },
+     {
+      "id": "exi10",
+      "ref": "WPC-2026-010",
+      "title": "New position in structure: Energy Efficiency Lead",
+      "category": "Organisation development",
+      "sub": "New position in structure",
+      "dept": "Power Plant",
+      "owner": "OD Superintendent",
+      "request": "Create one position to own the energy efficiency roadmap across Power Plant and Potline.",
+      "annualCost": 36000,
+      "hcRequested": 1,
+      "grade": "Grade 12",
+      "budgeted": "Non-budgeted",
+      "effectiveDate": "2027-01-10",
+      "outcome": "Approved",
+      "hcApproved": 1,
+      "discussion": "EXCO approved the position at its last meeting.",
+      "decision": "Noted: EXCO approval received. OD to add the position to the structure.",
+      "actions": [
+       {
+        "text": "Add the position to the structure and grade it",
+        "owner": "OD Superintendent",
+        "due": "2026-11-08"
+       }
+      ]
+     }
+    ]
+   }
+  }
+ },
+ "meetings/exm6": {
+  "id": "exm6",
+  "ref": "M-2026-06",
+  "title": "WPC Meeting, November",
+  "date": "2026-11-16",
+  "time": "09:00",
+  "location": "Admin Building, Meeting Room 2",
+  "status": "agenda_issued",
+  "version": 0,
+  "agenda": [
+   "exi18",
+   "exi19",
+   "exi20",
+   "exi21",
+   "exi01"
+  ],
+  "members": [
+   "u_mem",
+   "u_m2",
+   "u_m3",
+   "u_m4",
+   "u_m5"
+  ],
+  "chairman": "u_chair",
+  "versions": [],
+  "attendance": {},
+  "example": true
+ },
+ "counters/refs": {
+  "item2026": 21,
+  "meeting2026": 6
+ },
+ "requests/u_req": {
   "r1": {
-   "title": "(Example) One Safety Officer for the Carbon area",
+   "title": "Two Crane Operators for the Casthouse despatch bay",
    "category": "Manpower requirement",
    "sub": "New position (budgeted)",
-   "dept": "Carbon",
-   "owner": "Carbon Manager",
-   "request": "One budgeted Safety Officer to cover the new baking furnace shift.",
-   "hcRequested": 1,
-   "grade": "Grade 9",
+   "dept": "Casthouse",
+   "owner": "Casthouse Manager",
+   "request": "Two budgeted Crane Operators for the second despatch bay, which opens next quarter.",
+   "hcRequested": 2,
+   "grade": "Grade 7",
    "budgeted": "Budgeted",
-   "annualCost": 15000,
-   "effectiveDate": "2027-02-01",
+   "annualCost": 16800,
+   "effectiveDate": "2027-01-25",
    "status": "submitted",
    "submittedAt": "2026-11-09T07:30:00Z",
    "updatedAt": "2026-11-09T07:30:00Z",
    "example": true
+  },
+  "r2": {
+   "title": "Extension of the insulation contractor, 6 workers",
+   "category": "New contractor request",
+   "sub": "Contract extension",
+   "dept": "Maintenance",
+   "owner": "Maintenance Manager",
+   "request": "Extend the insulation contract by 4 months to finish the duct work.",
+   "hcRequested": 6,
+   "grade": "",
+   "budgeted": "Budgeted",
+   "annualCost": 14400,
+   "effectiveDate": "2026-12-21",
+   "status": "submitted",
+   "submittedAt": "2026-11-10T09:10:00Z",
+   "updatedAt": "2026-11-10T09:10:00Z",
+   "example": true
   }
+ },
+ "config/roster": {
+  "chairman": "u_chair",
+  "members": [
+   "u_mem",
+   "u_m2",
+   "u_m3",
+   "u_m4",
+   "u_m5"
+  ],
+  "quorum": null
  }
 }

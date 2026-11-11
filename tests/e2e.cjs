@@ -4,7 +4,7 @@ const { chromium } = require("playwright");
 const http = require("http"), fs = require("fs"), path = require("path");
 const ROOT = path.resolve(__dirname, "..");
 const AXE = path.resolve(__dirname, "../../e2e/node_modules/axe-core/axe.min.js");
-const seed = JSON.parse(fs.readFileSync(path.join(ROOT, "seed.json"), "utf8"));
+const seed = JSON.parse(fs.readFileSync(path.join(ROOT, "tests", "seed.fixture.json"), "utf8"));
 const types = { ".js": "text/javascript", ".css": "text/css", ".html": "text/html", ".json": "application/json" };
 const server = http.createServer((req, res) => {
   const url = decodeURIComponent(req.url.split("?")[0]);
@@ -173,7 +173,7 @@ const expect = (cond, msg) => { if (!cond) throw new Error(msg); };
       await page.click('[data-to="circulated"]'); await confirm();
       await page.click('[data-tab="agenda"]');
       await page.waitForSelector(".minutes-doc");
-      expect((await page.textContent(".minutes-doc")).includes("v1"), "v1 doc");
+      expect((await page.textContent(".minutes-doc")).includes("Version 1"), "v1 doc");
       expect((await page.textContent(".minutes-doc")).includes("Deferred"), "outcome in minutes document");
     });
     await step("Present mode shows one request per screen; meeting pack PDF downloads", async () => {
@@ -187,9 +187,10 @@ const expect = (cond, msg) => { if (!cond) throw new Error(msg); };
       expect(!(await page.locator(".present").count()), "Escape closes the presentation");
     });
     await step("Minutes download as a Word document", async () => {
-      await page.click('[data-action="minutes.download"]'); await page.waitForTimeout(200);
+      await page.click('[data-action="minutes.view"]'); await page.waitForSelector(".docview .minutes-doc"); await page.click('.docview [data-action="minutes.download"]'); await page.waitForTimeout(200);
       const f = await page.evaluate(() => window.__DOWNLOADS || []);
       expect(f.some(x => x.endsWith(".doc")), `downloads ${f}`);
+      await page.click('[data-action="doc.close"]'); expect(!(await page.locator(".docview").count()), "viewer closes");
     });
     await step("Member requests a correction; secretary revises to v2", async () => {
       await page.click('[data-action="sig.correct"]');
@@ -199,7 +200,7 @@ const expect = (cond, msg) => { if (!cond) throw new Error(msg); };
       await page.click('.msg.error [data-to="drafting"]'); await confirm();
       await page.click('[data-to="circulated"]'); await confirm();
       await page.waitForSelector(".minutes-doc");
-      expect((await page.textContent(".ph")).includes("v2"), "now v2");
+      expect((await page.textContent(".mhero")).includes("v2"), "now v2");
     });
     await step("Member signs v2; Chairman approves; secretary archives", async () => {
       await page.click('[data-action="sig.sign"]'); await confirm(); await page.waitForTimeout(200);

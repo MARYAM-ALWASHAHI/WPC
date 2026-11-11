@@ -3,31 +3,38 @@
 <title>WPC Hub</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
 /* Tokens live in css/app.css. This block only keeps the first frame readable before the stylesheet arrives. */
-:root { --bg: #f4f6f8; --text: #1b2733; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #0f1720; --text: #e3e9ef; color-scheme: dark; } }
-:root[data-theme="dark"] { --bg: #0f1720; --text: #e3e9ef; color-scheme: dark; }
+:root { --bg: #f3f5f9; --text: #0f1c2b; color-scheme: light; }
 body { background: var(--bg); color: var(--text); }
 </style>
 <link rel="stylesheet" href="css/app.css">
 
 <a class="skip" href="#main">Skip to content</a>
-<header class="shellbar">
-  <div class="brand"><span class="brand-mark" aria-hidden="true">WPC</span><span>WPC Hub</span><small>Workforce Planning Committee</small></div>
-  <div class="live" id="live"></div>
-  <div class="user" id="user"></div>
-</header>
-<div class="layout">
-  <aside class="sidenav" aria-label="Modules">
+<div class="app">
+  <aside class="side" id="side" aria-label="Modules">
+    <div class="brand"><span class="brand-mark" aria-hidden="true">WPC</span><span class="brand-t"><b>WPC Hub</b><small>Workforce Planning Committee</small></span></div>
     <nav id="nav"></nav>
-    <div class="nav-foot">Prototype for HR and IT review. Example records are marked “(Example)”. Not approved for live employee data.</div>
+    <div class="side-foot">
+      <div class="user" id="user"></div>
+      <div class="live" id="live"></div>
+      <p class="nav-foot">Prototype for HR and IT review. All records are fictional examples. Not approved for live employee data.</p>
+    </div>
   </aside>
-  <main id="main" tabindex="-1"><div class="loading" role="status">Loading WPC Hub…</div></main>
+  <div class="side-scrim" data-action="side.close"></div>
+  <div class="stage">
+    <header class="topbar">
+      <div class="brand"><span class="brand-mark" aria-hidden="true">WPC</span><span class="brand-t"><b>WPC Hub</b></span></div>
+      <button type="button" class="menu-btn" data-action="side.toggle" aria-label="Open menu" aria-controls="side"><svg viewBox="0 0 16 16" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M2 4h12M2 8h12M2 12h12"/></svg></button>
+    </header>
+    <main id="main" tabindex="-1"><div class="loading" role="status">Loading WPC Hub…</div></main>
+  </div>
 </div>
+<nav class="tabbar" id="tabbar" aria-label="Quick navigation"></nav>
 <div id="layer"></div>
 <div id="dialog"></div>
 <div id="toasts" aria-live="polite"></div>
+<script src="js/demo-seed.js"></script>
 <script src="js/demo-runtime.js"></script>
 <script type="module" src="js/app.js"></script>
