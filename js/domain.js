@@ -14,6 +14,20 @@ export const CATEGORIES = Object.freeze({
 export const DEPARTMENTS = Object.freeze(["Operations", "Potline", "Carbon", "Casthouse", "Power Plant", "Maintenance",
   "Quality", "Finance", "HR", "IT", "Supply Chain", "HSE", "Other"]);
 
+/* ---------- Decisions: one structured outcome per item per meeting ---------- */
+/** "open" outcomes keep the item in front of the committee; "final" outcomes decide it. */
+export const OUTCOMES = Object.freeze({
+  "Approved":                    "final",
+  "Approved with conditions":    "final",
+  "Recommended to EXCO":         "final",
+  "Endorsed by circulation":     "final",
+  "Rejected":                    "final",
+  "Deferred":                    "open",
+  "Returned for clarification":  "open",
+});
+export const isFinalOutcome = o => OUTCOMES[o] === "final";
+export const BUDGETED = ["", "Budgeted", "Non-budgeted", "Not applicable"];
+
 /* ---------- Meeting workflow (BPMN lanes: Secretary, Member, Chairman) ---------- */
 export const MEETING_STATES = Object.freeze({
   preparation:   { label: "Preparation",        order: 0 },
@@ -92,7 +106,7 @@ export function guardTransition(m, to, ctx) {
     if (!m.members.length) problems.push("Add at least one committee member who signs.");
     for (const id of m.agenda) {
       const mn = ctx.minutes[`${m.id}__${id}`];
-      if (!mn?.decision?.trim()) problems.push(`${ctx.items[id]?.ref || id}: record the recommendation or decision.`);
+      if (!mn?.outcome) problems.push(`${ctx.items[id]?.ref || id}: choose the decision outcome.`);
     }
   }
   if (guard === "archive") {
@@ -103,14 +117,29 @@ export function guardTransition(m, to, ctx) {
 }
 
 /* ---------- Items ---------- */
-export const ITEM_STAGES = ["Submitted", "Scheduled", "Under discussion", "Decided", "In follow-up", "Closed", "Withdrawn"];
+export const ITEM_STAGES = ["Submitted", "Scheduled", "Under discussion", "Deferred", "Decided", "In follow-up", "Closed", "Withdrawn"];
+
+/** Minutes of one item, newest meeting first, each with its meeting. */
+export function itemMinutes(item, ctx) {
+  return Object.values(ctx.meetings).filter(m => m.agenda.includes(item.id))
+    .sort((a, b) => (b.date || "").localeCompare(a.date || ""))
+    .map(m => ({ m, mn: ctx.minutes[`${m.id}__${item.id}`] })).filter(x => x.mn);
+}
+/** The latest recorded outcome (structured), or null. */
+export function latestOutcome(item, ctx) {
+  return itemMinutes(item, ctx).find(x => x.mn.outcome) || null;
+}
 
 export function itemStage(item, ctx) {
   if (item.status === "WITHDRAWN") return "Withdrawn";
   if (item.status === "CLOSED") return "Closed";
   const meetings = Object.values(ctx.meetings).filter(m => m.agenda.includes(item.id)).sort((a, b) => (b.date || "").localeCompare(a.date || ""));
   const mins = meetings.map(m => ctx.minutes[`${m.id}__${item.id}`]).filter(Boolean);
-  const decided = mins.some(x => x.decision?.trim());
+  const last = mins.find(x => x.outcome || x.decision?.trim());
+  if (last?.outcome && !isFinalOutcome(last.outcome)) {
+    return meetings.some(m => ["preparation", "agenda_issued", "in_session"].includes(m.status) && !ctx.minutes[`${m.id}__${item.id}`]?.outcome) ? "Scheduled" : "Deferred";
+  }
+  const decided = !!last;
   if (decided) {
     const open = Object.values(ctx.actions).some(a => a.itemId === item.id && isActionOpen(a));
     return open ? "In follow-up" : "Decided";
@@ -172,7 +201,67 @@ export function validateItem(v) {
   if (!DEPARTMENTS.includes(v.dept)) e.dept = "Choose the requesting department.";
   if (!v.owner || v.owner.trim().length < 2) e.owner = "Enter who is Responsible (a role is enough).";
   if (!v.request || v.request.trim().length < 10) e.request = "Describe the request in at least 10 characters.";
+  if (v.hcRequested !== undefined && v.hcRequested !== "" && !/^\d{1,4}$/.test(String(v.hcRequested))) e.hcRequested = "Enter a whole number of positions.";
+  if (v.annualCost !== undefined && v.annualCost !== "" && !/^\d{1,9}(\.\d{1,3})?$/.test(String(v.annualCost))) e.annualCost = "Enter an amount in OMR, digits only.";
+  if (v.effectiveDate && !/^\d{4}-\d{2}-\d{2}$/.test(v.effectiveDate)) e.effectiveDate = "Use a valid date.";
+  if (v.budgeted && !BUDGETED.includes(v.budgeted)) e.budgeted = "Choose from the list.";
   return e;
+}
+/** Manpower facts stored on an item. Numbers stay strings in forms and become numbers here. */
+export function itemFacts(v) {
+  const n = x => (x === "" || x == null ? null : Number(x));
+  return { hcRequested: n(v.hcRequested), grade: (v.grade || "").trim(), budgeted: v.budgeted || "", annualCost: n(v.annualCost), effectiveDate: v.effectiveDate || "" };
+}
+
+/* ---------- Charter KPIs (WPC Process Automation charter) ---------- */
+/**
+ * cycle: average days from submission to the first final outcome.
+ * firstTime: share of decided items never returned for clarification.
+ * aged: open items older than 30 days.
+ */
+export function charterKpis(ctx, today) {
+  const items = Object.values(ctx.items).filter(i => !i.archived);
+  const decided = [];
+  for (const it of items) {
+    const mins = itemMinutes(it, ctx).slice().reverse(); // oldest first
+    const first = mins.find(x => isFinalOutcome(x.mn.outcome));
+    if (!first || !it.createdAt || !first.m.date) continue;
+    decided.push({ it, days: Math.max(0, daysBetween(it.createdAt.slice(0, 10), first.m.date)), returned: !!it.returned || mins.some(x => x.mn.outcome === "Returned for clarification") });
+  }
+  const open = items.filter(isItemOpen);
+  const age = it => it.createdAt ? daysBetween(it.createdAt.slice(0, 10), today) : 0;
+  return {
+    decidedCount: decided.length,
+    cycleDays: decided.length ? Math.round(decided.reduce((s, x) => s + x.days, 0) / decided.length) : null,
+    firstTimePct: decided.length ? Math.round(100 * decided.filter(x => !x.returned).length / decided.length) : null,
+    aged30: open.filter(it => age(it) > 30).length,
+    ageBuckets: [["0–30 days", 0, 30], ["31–60 days", 31, 60], ["61–90 days", 61, 90], ["Over 90 days", 91, Infinity]].map(([l, a, b]) => [l, open.filter(it => age(it) >= a && age(it) <= b).length]),
+  };
+}
+export function outcomeCounts(ctx) {
+  const counts = Object.fromEntries(Object.keys(OUTCOMES).map(o => [o, 0]));
+  for (const mn of Object.values(ctx.minutes)) if (mn.outcome && counts[mn.outcome] !== undefined && ctx.meetings[mn.meetingId]) counts[mn.outcome]++;
+  return Object.entries(counts);
+}
+/** Positions requested on open items vs approved (latest final outcome with an approved headcount). */
+export function headcountTotals(ctx) {
+  let requested = 0, approved = 0;
+  for (const it of Object.values(ctx.items)) {
+    if (it.archived || it.status === "WITHDRAWN") continue;
+    requested += Number(it.hcRequested) || 0;
+    const lo = latestOutcome(it, ctx);
+    if (lo && isFinalOutcome(lo.mn.outcome) && lo.mn.outcome !== "Rejected") approved += Number(lo.mn.hcApproved) || 0;
+  }
+  return { requested, approved };
+}
+
+/* ---------- Attendance and quorum ---------- */
+export const ATTENDANCE = ["Present", "Apology", "Absent"];
+/** quorum: number of committee people who must be present (from config); null = not set. */
+export function quorumState(m, quorum) {
+  const present = Object.values(m.attendance || {}).filter(s => s === "Present").length;
+  if (!quorum) return { present, required: null, met: null };
+  return { present, required: quorum, met: present >= quorum };
 }
 export function validateAction(v, today) {
   const e = {};
@@ -231,10 +320,13 @@ export function paginate(rows, page, size) {
 export function buildSnapshot(m, ctx, at) {
   return {
     v: (m.version || 0) + 1, at,
+    time: m.time || "", location: m.location || "", attendance: { ...(m.attendance || {}) },
     items: m.agenda.map(id => ctx.items[id]).filter(Boolean).map(it => {
       const mn = ctx.minutes[`${m.id}__${it.id}`] || {};
       return {
         id: it.id, ref: it.ref, title: it.title, category: it.category, sub: it.sub || "", dept: it.dept, request: it.request || "",
+        hcRequested: it.hcRequested ?? null, grade: it.grade || "", budgeted: it.budgeted || "", effectiveDate: it.effectiveDate || "",
+        outcome: mn.outcome || "", hcApproved: mn.hcApproved ?? null,
         discussion: mn.discussion || "", decision: mn.decision || "",
         actions: Object.values(ctx.actions).filter(a => a.itemId === it.id && a.meetingId === m.id && a.status !== "CANCELLED")
           .map(a => ({ text: a.text, owner: a.owner || "", due: a.due || "" })),
@@ -250,7 +342,7 @@ export function diffSnapshots(prev, next) {
   for (const it of next.items) {
     const p = byId[it.id];
     if (!p) { out.push({ ref: it.ref, field: "item", change: "added" }); continue; }
-    for (const f of ["discussion", "decision"]) if ((p[f] || "") !== (it[f] || "")) out.push({ ref: it.ref, field: f, before: p[f], after: it[f] });
+    for (const f of ["outcome", "hcApproved", "discussion", "decision"]) if ((p[f] || "") !== (it[f] || "")) out.push({ ref: it.ref, field: f, before: p[f], after: it[f] });
     if (JSON.stringify(p.actions) !== JSON.stringify(it.actions)) out.push({ ref: it.ref, field: "actions", change: "changed" });
   }
   for (const p of prev.items) if (!next.items.some(i => i.id === p.id)) out.push({ ref: p.ref, field: "item", change: "removed" });
@@ -258,16 +350,20 @@ export function diffSnapshots(prev, next) {
 }
 
 /* ---------- Roles ---------- */
-export const ROLES = ["Secretary", "Chairman", "Member", "Viewer"];
-/** isEditor = share level Editor/Owner (db admin). Roster decides Chairman / Member. */
-export function roleOf(userId, isEditor, roster) {
+export const ROLES = ["Secretary", "Chairman", "Member", "Requester", "Viewer"];
+/** isEditor = share level Editor/Owner (db admin). Roster decides Chairman / Member.
+ *  canWrite = Contributor level (may write their own records): a department requester. */
+export function roleOf(userId, isEditor, roster, canWrite = false) {
   if (isEditor) return "Secretary";
   if (roster?.chairman && roster.chairman === userId) return "Chairman";
   if ((roster?.members || []).includes(userId)) return "Member";
-  return "Viewer";
+  return canWrite === true ? "Requester" : "Viewer";
 }
 export const PERMISSIONS = [
-  ["Create and edit agenda items", ["Secretary"]],
+  ["Submit a request to the committee", ["Secretary", "Chairman", "Member", "Requester"]],
+  ["Accept or return submitted requests", ["Secretary"]],
+  ["Create and edit agenda items, attach documents", ["Secretary"]],
+  ["Record attendance", ["Secretary"]],
   ["Create meetings and manage the agenda", ["Secretary"]],
   ["Record live minutes and actions", ["Secretary"]],
   ["Circulate minutes and issue new versions", ["Secretary"]],
@@ -277,7 +373,7 @@ export const PERMISSIONS = [
   ["Close, withdraw or archive items", ["Secretary"]],
   ["Update follow-up action status", ["Secretary"]],
   ["Manage committee roster", ["Secretary"]],
-  ["View dashboard, items, minutes and history", ["Secretary", "Chairman", "Member", "Viewer"]],
+  ["View dashboard, items, minutes and history", ["Secretary", "Chairman", "Member", "Requester", "Viewer"]],
   ["Export data", ["Secretary"]],
 ];
 

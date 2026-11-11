@@ -20,6 +20,8 @@ test("meeting transitions follow the workflow and guards", () => {
   const p = D.guardTransition(drafting, "circulated", ctx);
   assert.ok(p.some(x => /member/.test(x)) && p.some(x => /WPC-2026-001/.test(x)));
   ctx.minutes["m1__i1"] = { decision: "Approved" };
+  assert.match(D.guardTransition({ ...drafting, members: ["u1"] }, "circulated", ctx)[0], /outcome/);
+  ctx.minutes["m1__i1"].outcome = "Approved";
   assert.equal(D.guardTransition({ ...drafting, members: ["u1"] }, "circulated", ctx).length, 0);
 });
 
@@ -133,4 +135,43 @@ test("a person who is both member and Chairman keeps two separate entries", () =
   const sigs = { u: { m1: { v: 1, status: "signed" }, "m1:chair": { v: 1, status: "approved" } } };
   assert.equal(D.meetingPhase(m, sigs).key, "approved");
   assert.equal(D.sigKey("m1", "chairman"), "m1:chair");
+});
+
+test("a deferred outcome keeps the item open and is not counted as decided", () => {
+  const item = { id: "i1", status: "OPEN", createdAt: "2026-10-01", hcRequested: 2 };
+  const ctx = { items: { i1: item }, meetings: { m1: meeting({ status: "archived", agenda: ["i1"], date: "2026-10-14" }) }, minutes: { m1__i1: { meetingId: "m1", decision: "Deferred", outcome: "Deferred" } }, actions: {} };
+  assert.equal(D.itemStage(item, ctx), "Deferred");
+  assert.equal(D.charterKpis(ctx, "2026-11-11").decidedCount, 0);
+  ctx.meetings.m2 = meeting({ id: "m2", status: "in_session", agenda: ["i1"], date: "2026-11-11" });
+  assert.equal(D.itemStage(item, ctx), "Scheduled");
+  ctx.minutes.m2__i1 = { meetingId: "m2", decision: "Approved", outcome: "Approved", hcApproved: 1 };
+  assert.equal(D.itemStage(item, ctx), "Decided");
+  const k = D.charterKpis(ctx, "2026-11-11");
+  assert.equal(k.decidedCount, 1); assert.equal(k.cycleDays, 41); assert.equal(k.firstTimePct, 100);
+  assert.deepEqual(D.headcountTotals(ctx), { requested: 2, approved: 1 });
+  ctx.minutes.m2__i1.outcome = "Rejected";
+  assert.equal(D.headcountTotals(ctx).approved, 0);
+});
+
+test("open items older than 30 days are counted; returned items are not first-time complete", () => {
+  const ctx = { items: { a: { id: "a", status: "OPEN", createdAt: "2026-09-01" }, b: { id: "b", status: "OPEN", createdAt: "2026-11-01", returned: true } }, meetings: { m1: meeting({ status: "archived", agenda: ["b"], date: "2026-11-10" }) }, minutes: { m1__b: { meetingId: "m1", outcome: "Approved" } }, actions: {} };
+  const k = D.charterKpis(ctx, "2026-11-11");
+  assert.equal(k.aged30, 1); assert.equal(k.firstTimePct, 0);
+});
+
+test("manpower facts are validated and quorum is never assumed", () => {
+  const base = { title: "T", category: Object.keys(D.CATEGORIES)[0], sub: D.CATEGORIES[Object.keys(D.CATEGORIES)[0]][0], dept: "HR", owner: "O", request: "Request text" };
+  assert.ok(D.validateItem({ ...base, hcRequested: "-1" }).hcRequested);
+  assert.ok(D.validateItem({ ...base, budgeted: "Maybe" }).budgeted);
+  assert.equal(D.itemFacts({ hcRequested: "3", annualCost: "" }).hcRequested, 3);
+  assert.equal(D.itemFacts({ hcRequested: "3", annualCost: "" }).annualCost, null);
+  const m = { attendance: { a: "Present", b: "Apology", c: "Present" } };
+  assert.deepEqual(D.quorumState(m, null), { present: 2, required: null, met: null });
+  assert.equal(D.quorumState(m, 3).met, false);
+  assert.equal(D.quorumState(m, 2).met, true);
+});
+
+test("a Contributor outside the roster is a Requester", () => {
+  assert.equal(D.roleOf("z", false, { members: [] }, true), "Requester");
+  assert.equal(D.roleOf("z", false, { members: [] }, null), "Viewer");
 });

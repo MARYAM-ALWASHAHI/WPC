@@ -3,7 +3,7 @@
  * Owns routing, UI state, the render loop and every user command (registered in COMMANDS).
  */
 import * as D from "./domain.js";
-import { state, connect, onChange, saveDoc, nextRef, newId, audit, writeSignature, errorMessage, setPresence, WriteError } from "./store.js";
+import { state, connect, onChange, saveDoc, nextRef, newId, audit, writeSignature, writeRequest, uploadFile, errorMessage, setPresence, WriteError } from "./store.js";
 import { esc, icon, toast, openPanel, closePanel, panelOpen, confirmDialog, readForm, msg, btn, panelHead } from "./ui.js";
 import * as V from "./views.js";
 
@@ -15,10 +15,10 @@ const ui = {
   itemFilter: ITEM_FILTER(),
   actionFilter: { status: "active", owner: "", overdue: false },
   auditFilter: { q: "", entity: "" },
-  tables: { items: TABLE("ref", "desc"), meetings: TABLE("date", "desc"), actions: TABLE("due"), audit: TABLE("at", "desc") },
+  tables: { items: TABLE("ref", "desc"), meetings: TABLE("date", "desc"), actions: TABLE("due"), audit: TABLE("at", "desc"), requests: TABLE("submittedAt", "desc") },
 };
-const ROUTES = { dashboard: V.dashboard, meetings: null, items: V.itemsView, actions: V.actionsView, review: V.reviewView, records: V.recordsView, admin: V.adminView };
-const NAV = [["dashboard", "Overview", "dashboard"], ["meetings", "Meetings", "meeting"], ["items", "Agenda items", "items"], ["actions", "Actions", "actions"], ["review", "Review and signatures", "sign"], ["records", "Historical records", "history"], ["admin", "Users and permissions", "users"]];
+const ROUTES = { dashboard: V.dashboard, requests: V.requestsView, meetings: null, items: V.itemsView, actions: V.actionsView, review: V.reviewView, records: V.recordsView, admin: V.adminView };
+const NAV = [["dashboard", "Overview", "dashboard"], ["requests", "Requests", "inbox"], ["meetings", "Meetings", "meeting"], ["items", "Agenda items", "items"], ["actions", "Actions", "actions"], ["review", "Review and signatures", "sign"], ["records", "Historical records", "history"], ["admin", "Users and permissions", "users"]];
 
 /* ---------- names ---------- */
 const names = {};
@@ -41,7 +41,7 @@ function queueResolve() {
 /* ---------- context passed to views ---------- */
 function ctx() {
   const s = state.session;
-  const role = D.roleOf(s.myId, s.isEditor, state.data.roster);
+  const role = D.roleOf(s.myId, s.isEditor, state.data.roster, s.canWrite);
   return { d: state.data, s, ui, role, today: D.isoToday(), name, presence: state.presence };
 }
 
@@ -49,7 +49,7 @@ function ctx() {
 let deferred = false;
 function render() {
   const ae = document.activeElement;
-  if (ae && (ae.dataset?.minute || ae.closest?.(".inline-form") || ae.id === "member-q" || ae.id === "roster-q")) { deferred = true; return; }
+  if (ae && ((ae.dataset?.minute && ae.tagName !== "SELECT") || ae.closest?.(".inline-form") || ae.id === "member-q" || ae.id === "roster-q")) { deferred = true; return; }
   deferred = false;
   const c = ctx();
   renderShell(c);
@@ -73,7 +73,7 @@ const loading = text => `<div class="loading" role="status"><span class="spinner
 function renderShell(c) {
   const tasks = V.myReviewTasks(c).length;
   const overdue = Object.values(state.data.actions).filter(a => D.isOverdue(a, c.today)).length;
-  const counts = { review: tasks, actions: overdue };
+  const counts = { review: tasks, actions: overdue, requests: c.role === "Secretary" ? V.pendingRequests(c).length : 0 };
   document.getElementById("nav").innerHTML = NAV.map(([k, l, ic]) => `<a href="#${k}" class="${ui.route === k ? "on" : ""}" ${ui.route === k ? 'aria-current="page"' : ""}>${icon(ic)}<span>${l}</span>${counts[k] ? `<span class="nav-count ${k === "actions" ? "bad" : ""}">${counts[k]}</span>` : ""}</a>`).join("");
   const u = document.getElementById("user");
   u.innerHTML = state.session.me ? `<span class="avatar"><img src="${esc(state.session.me.avatarUrl)}" alt=""></span><span class="u-meta"><span class="u-name"></span><span class="u-role">${esc(c.role)}</span></span>` : "";
@@ -152,6 +152,52 @@ const COMMANDS = {
   /* actions */
   "action.status": () => {},
 
+  /* documents */
+  "doc.upload": () => {},
+  "doc.remove": async el => {
+    const it = state.data.items[el.dataset.id]; const doc = (it.attachments || []).find(a => a.id === el.dataset.doc); if (!doc) return;
+    if (!(await confirmDialog({ title: `Remove ${doc.name}?`, body: "<p>The document is detached from this item. The removal is logged.</p>", confirm: "Remove", tone: "danger" }))) return;
+    if (await run(() => saveDoc("items", it.id, { attachments: (it.attachments || []).filter(a => a.id !== doc.id) }, { baseRev: it.rev || 0 }), "Document removed")) audit("item", it.id, "Removed document", doc.name, it.ref);
+  },
+
+  /* minutes as a Word document */
+  "minutes.download": async el => {
+    const m = state.data.meetings[el.dataset.id]; const dl = state.session.downloads;
+    if (!dl) return toast("Downloads are not available in this view.", "error");
+    const snap = m.snapshot || D.buildSnapshot({ ...m, version: (m.version || 0) }, { items: state.data.items, minutes: state.data.minutes, actions: state.data.actions }, new Date().toISOString());
+    const html = minutesWord(m, snap, !m.snapshot);
+    try { await dl.save({ filename: `${m.ref}-minutes-${m.snapshot ? `v${m.version}` : "draft"}.doc`, data: html }); audit("meeting", m.id, "Downloaded minutes", m.snapshot ? `v${m.version}` : "draft", m.ref); }
+    catch (e) { if (e?.code !== "dismissed" && e?.code !== "declined") toast("The file was not saved.", "error"); }
+  },
+
+  /* department requests */
+  "request.new": () => openPanel(V.requestForm(ctx()), "New request"),
+  "request.edit": el => { const r = V.allRequests(ctx()).find(x => x.uid === state.session.myId && x.rid === el.dataset.rid); if (r) openPanel(V.requestForm(ctx(), r), "Edit request"); },
+  "request.withdraw": async el => {
+    if (!(await confirmDialog({ title: "Withdraw this request?", body: "<p>The secretaries will no longer see it as new.</p>", confirm: "Withdraw", tone: "danger" }))) return;
+    await run(() => writeRequest(el.dataset.rid, { status: "withdrawn" }), "Request withdrawn");
+  },
+  "request.accept": el => {
+    if (!requireSecretary()) return;
+    const r = V.allRequests(ctx()).find(x => x.key === el.dataset.key); if (!r) return;
+    const values = { title: r.title, category: r.category, sub: r.sub, dept: r.dept, owner: r.owner, request: r.request, hcRequested: r.hcRequested ?? "", grade: r.grade || "", budgeted: r.budgeted || "", annualCost: r.annualCost ?? "", effectiveDate: r.effectiveDate || "" };
+    const dupes = D.findDuplicates({ ...values, id: "" }, Object.values(state.data.items));
+    openPanel(V.itemForm(ctx(), null, { values, dupes, requestKey: r.key }), "Accept request");
+  },
+  "request.return": async el => {
+    if (!requireSecretary()) return;
+    const r = V.allRequests(ctx()).find(x => x.key === el.dataset.key); if (!r) return;
+    let reason = ""; const host = document.getElementById("dialog");
+    const capture = () => { reason = host.querySelector("#return-reason")?.value.trim() || reason; };
+    host.addEventListener("input", capture);
+    const ok = await confirmDialog({ title: "Return for clarification?", body: `<p>${esc(r.title)}</p><p>Tell the requester what is missing (required).</p><textarea id="return-reason" rows="3" aria-label="What is missing"></textarea>`, confirm: "Return request" });
+    host.removeEventListener("input", capture);
+    if (!ok) return;
+    if (reason.length < 5) return toast("Write what is missing (at least 5 characters).", "error");
+    const id = `${r.uid}__${r.rid}`;
+    if (await run(() => saveDoc("intake", id, { status: "returned", reason, at: new Date().toISOString(), title: r.title }, { create: !state.data.intake[id], force: true }), "Request returned to the department")) audit("request", id, "Returned for clarification", reason, r.title);
+  },
+
   /* roster */
   "roster.remove": async el => {
     const r = state.data.roster; const next = el.dataset.role === "chairman" ? { ...r, chairman: null } : { ...r, members: r.members.filter(u => u !== el.dataset.user) };
@@ -166,14 +212,14 @@ const COMMANDS = {
   /* data export (for IT handover) */
   "data.export": async () => {
     const dl = state.session.downloads; if (!dl) return toast("Downloads are not available in this view.", "error");
-    const data = { exportedAt: new Date().toISOString(), schema: "wpc-hub/2", ...Object.fromEntries(["items", "meetings", "minutes", "actions", "audit"].map(k => [k, Object.values(state.data[k])])), signatures: state.data.sigs, roster: state.data.roster };
+    const data = { exportedAt: new Date().toISOString(), schema: "wpc-hub/3", ...Object.fromEntries(["items", "meetings", "minutes", "actions", "audit"].map(k => [k, Object.values(state.data[k])])), signatures: state.data.sigs, roster: state.data.roster, requests: state.data.requests, intake: state.data.intake };
     try { await dl.save({ filename: `wpc-hub-export-${D.isoToday()}.json`, data: JSON.stringify(data, null, 2) }); } catch (e) { if (e?.code !== "dismissed" && e?.code !== "declined") toast("Export was not saved.", "error"); }
   },
   "data.exportCsv": async () => {
     const dl = state.session.downloads; if (!dl) return toast("Downloads are not available in this view.", "error");
     const c = ctx(); const q = v => `"${String(v ?? "").replace(/"/g, '""')}"`;
-    const cols = ["ref", "title", "category", "sub", "dept", "owner", "status", "stage", "createdAt", "closedDate", "evidence", "request"];
-    const rows = Object.values(state.data.items).map(it => cols.map(k => q(k === "stage" ? D.itemStage(it, c.d) : it[k])).join(","));
+    const cols = ["ref", "title", "category", "sub", "dept", "owner", "hcRequested", "hcApproved", "grade", "budgeted", "annualCost", "effectiveDate", "status", "stage", "latestOutcome", "createdAt", "closedDate", "evidence", "request"];
+    const rows = Object.values(state.data.items).map(it => { const lo = D.latestOutcome(it, c.d); return cols.map(k => q(k === "stage" ? D.itemStage(it, c.d) : k === "latestOutcome" ? lo?.mn.outcome : k === "hcApproved" ? lo?.mn.hcApproved : it[k])).join(","); });
     try { await dl.save({ filename: `wpc-items-${D.isoToday()}.csv`, data: "﻿" + [cols.join(","), ...rows].join("\r\n") }); } catch (e) { if (e?.code !== "dismissed" && e?.code !== "declined") toast("Export was not saved.", "error"); }
   },
 };
@@ -192,9 +238,40 @@ COMMANDS["item.withdraw"] = async el => {
   if (await run(() => saveDoc("items", it.id, { status: "WITHDRAWN", closedDate: D.isoToday(), evidence: reason, closedBy: state.session.myId }, { baseRev: it.rev || 0 }), `${it.ref} withdrawn`)) audit("item", it.id, "Withdrawn", reason, it.ref);
 };
 
+/** Minutes as a Word-compatible HTML document (opens in Word, saves as .docx from there). */
+function minutesWord(m, snap, draft) {
+  const n = uid => name(uid);
+  const att = snap.attendance || {};
+  const list = a => Object.entries(att).filter(([, s]) => s === a).map(([u]) => esc(n(u))).join(", ") || "—";
+  const sigRows = draft ? "" : (() => { const s = D.signatureState(m, state.data.sigs); const chair = m.chairman ? D.sigFor(m, m.chairman, state.data.sigs, "chairman") : null;
+    return `<h2>Signatures on v${m.version}</h2><table><tr><th>Name</th><th>Role</th><th>Status</th><th>Date</th></tr>${s.rows.map(r => `<tr><td>${esc(n(r.user))}</td><td>Member</td><td>${r.sig ? (r.sig.status === "signed" ? "Signed" : "Correction requested") : "Pending"}</td><td>${r.sig ? esc(new Date(r.sig.at).toLocaleString("en-GB")) : ""}</td></tr>`).join("")}${m.chairman ? `<tr><td>${esc(n(m.chairman))}</td><td>Chairman</td><td>${chair ? (chair.status === "approved" ? "Approved" : "Correction requested") : "Pending"}</td><td>${chair ? esc(new Date(chair.at).toLocaleString("en-GB")) : ""}</td></tr>` : ""}</table><p class="small">Sign-off recorded in WPC Hub. Not a qualified electronic signature.</p>`; })();
+  const facts = x => [x.hcRequested != null && x.hcRequested !== "" ? `${x.hcRequested} position(s) requested` : "", x.grade ? (/^grade\b/i.test(x.grade) ? x.grade : `Grade ${x.grade}`) : "", x.budgeted || "", x.effectiveDate ? `Effective ${x.effectiveDate}` : ""].filter(Boolean).map(esc).join(" · ");
+  return `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>${esc(m.title)}</title>
+<style>body{font-family:Arial,sans-serif;font-size:10.5pt}h1{font-size:15pt;color:#1F3A5F}h2{font-size:12pt;color:#1F3A5F;margin-top:14pt}table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:4pt;vertical-align:top;text-align:left}th{background:#E8EDF2}.small{font-size:8.5pt;color:#555}</style></head><body>
+<p class="small">Workforce Planning Committee · Minutes of meeting${draft ? " · DRAFT, not circulated" : ` · Version ${snap.v}`}</p>
+<h1>${esc(m.title)}</h1>
+<table><tr><th>Reference</th><td>${esc(m.ref)}</td><th>Date</th><td>${esc(m.date || "")} ${esc(snap.time || m.time || "")}</td></tr><tr><th>Location</th><td>${esc(snap.location || m.location || "—")}</td><th>Chairman</th><td>${m.chairman ? esc(n(m.chairman)) : "—"}</td></tr>
+<tr><th>Present</th><td colspan="3">${list("Present")}</td></tr><tr><th>Apologies</th><td colspan="3">${list("Apology")}</td></tr><tr><th>Absent</th><td colspan="3">${list("Absent")}</td></tr></table>
+<h2>Agenda items</h2><table><tr><th>#</th><th>Item and request</th><th>Discussion</th><th>Outcome and decision</th><th>Actions</th></tr>
+${snap.items.map((x, i) => `<tr><td>${i + 1}</td><td><b>${esc(x.ref)}</b> ${esc(x.title)}<br><span class="small">${esc(x.category)} · ${esc(x.dept)}${facts(x) ? ` · ${facts(x)}` : ""}</span><br>${esc(x.request)}</td><td>${esc(x.discussion || "—")}</td><td><b>${esc(x.outcome || "—")}</b>${x.hcApproved != null && x.hcApproved !== "" ? ` (${esc(x.hcApproved)} approved)` : ""}<br>${esc(x.decision || "")}</td><td>${x.actions.map(a => `${esc(a.text)} <span class="small">(${esc(a.owner)}, due ${esc(a.due)})</span>`).join("<br>") || "—"}</td></tr>`).join("")}</table>
+${sigRows}</body></html>`;
+}
+
+/** Save one minutes field outside the free-text autosave (outcome, approved positions). */
+async function saveMinuteField(key, f, value, label) {
+  const [mid, iid] = key.split("__");
+  return run(async () => {
+    const ref = state.session.db.doc(`minutes/${key}`);
+    const snap = await ref.get();
+    const cur = snap.exists ? snap.data() : { meetingId: mid, itemId: iid };
+    await ref.set({ ...cur, meetingId: mid, itemId: iid, [f]: value, rev: (cur.rev || 0) + 1, updatedBy: state.session.myId, updatedAt: new Date().toISOString() });
+    audit("minutes", key, label, String(value ?? ""), state.data.items[iid]?.ref);
+  });
+}
+
 async function saveRoster(next) {
   const cur = state.data.roster;
-  return saveDoc("config", "roster", { chairman: next.chairman || null, members: next.members || [] }, { create: !cur.rev, force: true });
+  return saveDoc("config", "roster", { chairman: next.chairman || null, members: next.members || [], quorum: next.quorum ?? cur.quorum ?? null }, { create: !cur.rev, force: true });
 }
 
 async function changeAgenda(mid, fn, ok) {
@@ -246,8 +323,11 @@ const FORMS = {
     if (dupes.length && !form.dataset.dupeok) return openPanel(V.itemForm(ctx(), null, { meetingId: form.dataset.meeting, values: v, dupes }), "New agenda item");
     await run(async () => {
       const ref = await nextRef("item"); const id = newId();
-      await saveDoc("items", id, { ...v, id, ref, status: "OPEN", archived: false, createdAt: D.isoToday(), createdBy: state.session.myId }, { create: true });
-      audit("item", id, "Created", `${v.category} / ${v.sub}`, ref);
+      const reqKey = form.dataset.request || "";
+      const req = reqKey ? V.allRequests(ctx()).find(r => r.key === reqKey) : null;
+      await saveDoc("items", id, { title: v.title, category: v.category, sub: v.sub, dept: v.dept, owner: v.owner, request: v.request, ...D.itemFacts(v), id, ref, status: "OPEN", archived: false, attachments: [],
+        createdAt: req?.submittedAt ? req.submittedAt.slice(0, 10) : D.isoToday(), createdBy: state.session.myId, ...(req ? { requestKey: reqKey, requestedBy: req.uid } : {}) }, { create: true });
+      audit("item", id, req ? "Created from department request" : "Created", `${v.category} / ${v.sub}`, ref);
       const mid = form.dataset.meeting;
       if (mid) await changeAgenda(mid, a => [...a, id], `Added ${ref} to the agenda`);
       closePanel(); toast(`${ref} created`, "ok");
@@ -258,14 +338,15 @@ const FORMS = {
     const errors = D.validateItem(v);
     if (Object.keys(errors).length) return openPanel(V.itemForm(ctx(), it, { errors, values: v }), "Edit item");
     try {
-      await saveDoc("items", it.id, v, { baseRev: +form.dataset.rev });
-      const changed = ["title", "category", "sub", "dept", "owner", "request"].filter(k => (it[k] || "") !== v[k]);
+      const patch = { title: v.title, category: v.category, sub: v.sub, dept: v.dept, owner: v.owner, request: v.request, ...D.itemFacts(v), returned: v.returned === "yes" };
+      await saveDoc("items", it.id, patch, { baseRev: +form.dataset.rev });
+      const changed = ["title", "category", "sub", "dept", "owner", "request", "hcRequested", "grade", "budgeted", "annualCost", "effectiveDate", "returned"].filter(k => String(it[k] ?? "") !== String(patch[k] ?? ""));
       audit("item", it.id, "Edited", changed.join(", "), it.ref);
       toast(`${it.ref} saved`, "ok"); openItem(it.id);
     } catch (e) {
       if (e.code !== "conflict") return toast(errorMessage(e), "error");
       const ok = await confirmDialog({ title: "This item changed while you were editing", body: `<p>${esc(name(e.current.updatedBy))} saved a change at ${new Date(e.current.updatedAt).toLocaleTimeString("en-GB")}. Overwrite their version with yours, or cancel and review their changes first.</p>`, confirm: "Overwrite with mine", tone: "danger" });
-      if (ok && await run(() => saveDoc("items", it.id, v, { force: true }), `${it.ref} saved`)) { audit("item", it.id, "Edited (overwrote a concurrent change)", "", it.ref); openItem(it.id); }
+      if (ok && await run(() => saveDoc("items", it.id, { title: v.title, category: v.category, sub: v.sub, dept: v.dept, owner: v.owner, request: v.request, ...D.itemFacts(v), returned: v.returned === "yes" }, { force: true }), `${it.ref} saved`)) { audit("item", it.id, "Edited (overwrote a concurrent change)", "", it.ref); openItem(it.id); }
     }
   },
   "item.close": async (form, v) => {
@@ -287,7 +368,7 @@ const FORMS = {
       const ref = await nextRef("meeting"); const id = newId();
       const agenda = v.bring ? Object.values(state.data.items).filter(i => D.isItemOpen(i) && !i.archived).map(i => i.id) : [];
       const members = v.roster ? [...(state.data.roster.members || [])] : [];
-      await saveDoc("meetings", id, { id, ref, title: v.title, date: v.date, chairman: v.chairman || null, status: "preparation", version: 0, agenda, members, versions: [], createdAt: new Date().toISOString(), createdBy: state.session.myId }, { create: true });
+      await saveDoc("meetings", id, { id, ref, title: v.title, date: v.date, time: v.time || "", location: v.location || "", attendance: {}, chairman: v.chairman || null, status: "preparation", version: 0, agenda, members, versions: [], createdAt: new Date().toISOString(), createdBy: state.session.myId }, { create: true });
       audit("meeting", id, "Created", `${agenda.length} items brought forward`, ref);
       closePanel(); ui.meetingId = id; ui.meetingTab = "agenda"; go("meetings"); toast(`${ref} created`, "ok");
     });
@@ -296,7 +377,7 @@ const FORMS = {
     const m = state.data.meetings[form.dataset.id];
     const errors = D.validateMeeting(v);
     if (Object.keys(errors).length) return openPanel(V.meetingForm(ctx(), m, { errors, values: v }), "Edit meeting");
-    if (await run(() => saveDoc("meetings", m.id, { title: v.title, date: v.date, chairman: v.chairman || null }, { baseRev: +form.dataset.rev }), "Meeting saved")) { audit("meeting", m.id, "Edited details", "", m.ref); closePanel(); }
+    if (await run(() => saveDoc("meetings", m.id, { title: v.title, date: v.date, time: v.time || "", location: v.location || "", chairman: v.chairman || null }, { baseRev: +form.dataset.rev }), "Meeting saved")) { audit("meeting", m.id, "Edited details", "", m.ref); closePanel(); }
   },
   "action.create": async (form, v) => {
     const errBox = form.querySelector("[data-err]");
@@ -307,6 +388,18 @@ const FORMS = {
     if (await run(() => saveDoc("actions", id, { id, itemId: form.dataset.item, meetingId: form.dataset.meeting, text: v.text, owner: v.owner, due: v.due, status: "OPEN", createdAt: new Date().toISOString() }, { create: true }), "Action added")) {
       audit("action", id, "Created", `${v.text} · ${v.owner} · due ${v.due}`, it?.ref); form.reset(); deferred && render();
     }
+  },
+  "request.submit": async (form, v) => {
+    const errors = D.validateItem(v);
+    if (Object.keys(errors).length) return openPanel(V.requestForm(ctx(), null, { errors, values: v }), "New request");
+    const rid = form.dataset.rid || newId();
+    const prev = state.data.requests[state.session.myId]?.[rid];
+    if (await run(() => writeRequest(rid, { title: v.title, category: v.category, sub: v.sub, dept: v.dept, owner: v.owner, request: v.request, ...D.itemFacts(v), status: "submitted", submittedAt: prev?.submittedAt || new Date().toISOString(), resentAt: prev ? new Date().toISOString() : "" }), prev ? "Request sent again" : "Request sent to the secretaries")) closePanel();
+  },
+  "roster.quorum": async (form, v) => {
+    const q = v.quorum === "" ? null : Number(v.quorum);
+    if (q !== null && (!Number.isInteger(q) || q < 1)) return toast("Enter a whole number of people, or leave it empty.", "error");
+    if (await run(() => saveRoster({ ...state.data.roster, quorum: q }), q ? `Quorum set to ${q}` : "Quorum cleared")) audit("roster", "roster", "Quorum changed", q ? String(q) : "not set", "Roster");
   },
   "sig.correct": async (form, v) => {
     if (!v.corr || v.corr.length < 5) { form.querySelector(".field").classList.add("has-error"); return toast("Describe the correction you need.", "error"); }
@@ -396,6 +489,26 @@ document.addEventListener("change", async e => {
   else if (a === "filter.audit") { ui.auditFilter[el.dataset.key] = el.value; ui.tables.audit.page = 1; render(); }
   else if (a === "table.size") { const t = ui.tables[el.dataset.table]; t.size = +el.value; t.page = 1; render(); }
   else if (a === "form.category") { const sub = el.form.querySelector('[name="sub"]'); sub.innerHTML = D.CATEGORIES[el.value].map(s => `<option>${esc(s)}</option>`).join(""); }
+  else if (a === "minute.outcome") { await saveMinuteField(el.dataset.minute, "outcome", el.value, "Outcome recorded"); }
+  else if (a === "minute.hc") { const n = el.value === "" ? null : Number(el.value); if (n !== null && (!Number.isInteger(n) || n < 0)) { toast("Enter a whole number.", "error"); return; } await saveMinuteField(el.dataset.minute, "hcApproved", n, "Positions approved"); }
+  else if (a === "attendance.set") {
+    const m = state.data.meetings[el.dataset.id]; const att = { ...(m.attendance || {}) };
+    if (el.value) att[el.dataset.user] = el.value; else delete att[el.dataset.user];
+    if (await run(() => saveDoc("meetings", m.id, { attendance: att }, { force: true }))) audit("meeting", m.id, "Attendance", `${name(el.dataset.user)}: ${el.value || "not recorded"}`, m.ref);
+  }
+  else if (a === "doc.upload") {
+    const file = el.files?.[0]; if (!file) return;
+    const it = state.data.items[el.dataset.id]; const kind = el.dataset.kind || "request";
+    el.disabled = true; toast(`Uploading ${file.name}…`);
+    const ok = await run(async () => {
+      const doc = { ...(await uploadFile(file)), kind };
+      const fresh = state.data.items[it.id];
+      await saveDoc("items", it.id, { attachments: [...(fresh.attachments || []), doc] }, { baseRev: fresh.rev || 0 });
+      audit("item", it.id, "Attached document", `${file.name} (${kind})`, it.ref);
+    }, `${file.name} attached`);
+    if (!ok) el.value = "";
+    el.disabled = false;
+  }
   else if (a === "action.status") {
     const act = state.data.actions[el.dataset.id]; const to = el.value;
     if (await run(() => saveDoc("actions", act.id, { status: to, doneDate: to === "DONE" ? D.isoToday() : "" }, { baseRev: act.rev || 0 }), `Action: ${D.ACTION_LABELS[to]}`)) audit("action", act.id, `Status: ${D.ACTION_LABELS[act.status]} → ${D.ACTION_LABELS[to]}`, act.text, state.data.items[act.itemId]?.ref);

@@ -1,4 +1,4 @@
-// In-memory stand-in for the claude.ai runtime (db, user, room, downloads), used only by the E2E harness.
+// In-memory stand-in for the claude.ai runtime (db, user, downloads, assets), used only by the E2E harness.
 (function () {
   const seed = window.__SEED || {};
   const store = JSON.parse(JSON.stringify(seed));
@@ -22,11 +22,14 @@
   const user = {
     me: async () => ({ id: ME.id, name: ME.name, avatarUrl: "data:image/gif;base64,R0lGODlhAQABAAAAACw=", isOwner: true, canEdit: ME.editor }),
     canEdit: async () => ME.editor,
+    can: name => name === "data.write" ? (ME.write ?? ME.editor) : null,
     profiles: async ids => Object.fromEntries([].concat(ids).map(i => [i, { id: i, name: (PEOPLE.find(p => p.id === i) || {}).name || "" }])),
     search: async q => PEOPLE.filter(p => !q || p.name.toLowerCase().includes(q.toLowerCase())).map(p => ({ ...p, avatarUrl: "data:image/gif;base64,R0lGODlhAQABAAAAACw=" })),
   };
   const downloads = { save: async req => { window.__DOWNLOADS = (window.__DOWNLOADS || []).concat([req.filename]); return { status: "saved" }; } };
+  let up = 0;
+  const assets = ME.editor ? { upload: async blob => { if (!/^(application\/pdf|image\/|text\/)/.test(blob.type || "")) throw { code: "unsupported_type", message: "unsupported" }; up++; window.__UPLOADS = (window.__UPLOADS || []).concat([blob.name || "blob"]); return { id: "a".repeat(31) + up, url: "data:,x", sizeBytes: blob.size, contentType: blob.type }; } } : null;
   window.__mockStore = store;
   window.__mockFire = fire;
-  window.claude = { use: async n => ({ db, user, downloads }[n] || null) };
+  window.claude = { use: async n => ({ db, user, downloads, assets }[n] || null) };
 })();

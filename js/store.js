@@ -5,12 +5,12 @@
  */
 import { normalizeMeeting, formatRef, nextRefNumber, isoToday, sigKey } from "./domain.js";
 
-export const COLLECTIONS = ["items", "meetings", "minutes", "actions", "signatures", "audit", "config"];
+export const COLLECTIONS = ["items", "meetings", "minutes", "actions", "signatures", "audit", "config", "requests", "intake"];
 
 export const state = {
-  data: { items: {}, meetings: {}, minutes: {}, actions: {}, sigs: {}, audit: {}, roster: { members: [], chairman: null } },
+  data: { items: {}, meetings: {}, minutes: {}, actions: {}, sigs: {}, audit: {}, roster: { members: [], chairman: null, quorum: null }, requests: {}, intake: {} },
   loaded: Object.fromEntries(COLLECTIONS.map(c => [c, false])),
-  session: { ready: false, db: null, user: null, room: null, downloads: null, me: null, myId: null, isEditor: false },
+  session: { ready: false, db: null, user: null, room: null, downloads: null, assets: null, me: null, myId: null, isEditor: false, canWrite: false },
   presence: {},           // peerId -> { user, editing }
   loadSlow: false,
   error: null,
@@ -29,11 +29,12 @@ export function notify() {
 export async function connect() {
   const c = window.claude;
   if (!c || typeof c.use !== "function") { state.session.ready = true; state.error = "standalone"; notify(); return; }
-  const [db, user, room, downloads] = await Promise.all(["db", "user", "room", "downloads"].map(n => c.use(n).catch(() => null)));
-  Object.assign(state.session, { db, user, room, downloads });
+  const [db, user, room, downloads, assets] = await Promise.all(["db", "user", "room", "downloads", "assets"].map(n => c.use(n).catch(() => null)));
+  Object.assign(state.session, { db, user, room, downloads, assets });
   if (user) {
     const me = await user.me();
     state.session.me = me; state.session.myId = me.id; state.session.isEditor = !!(await user.canEdit());
+    try { state.session.canWrite = (await user.can("data.write")) === true; } catch (_) { /* older runtime */ }
   }
   state.session.ready = true;
   if (!db) { state.error = "nodb"; notify(); return; }
@@ -49,7 +50,9 @@ export async function connect() {
   sub("actions", docs => { state.data.actions = byId(docs); });
   sub("signatures", docs => { state.data.sigs = Object.fromEntries(docs.map(d => [d.id, { ...d.data() }])); });
   sub("audit", docs => { state.data.audit = Object.fromEntries(docs.map(d => [d.id, { ...d.data() }])); });
-  sub("config", docs => { const r = docs.find(d => d.id === "roster"); state.data.roster = r ? { members: [], chairman: null, ...r.data() } : { members: [], chairman: null }; });
+  sub("config", docs => { const r = docs.find(d => d.id === "roster"); state.data.roster = r ? { members: [], chairman: null, quorum: null, ...r.data() } : { members: [], chairman: null, quorum: null }; });
+  sub("requests", docs => { state.data.requests = Object.fromEntries(docs.map(d => [d.id, { ...d.data() }])); });
+  sub("intake", docs => { state.data.intake = Object.fromEntries(docs.map(d => [d.id, { ...d.data() }])); });
   if (room) {
     room.onPeers(change => {
       const p = {};
@@ -149,6 +152,35 @@ export async function writeSignature(meeting, status, role, comment = "") {
   });
 }
 
+/** A department request lives in the requester's own document; nobody else can write it. */
+export async function writeRequest(reqId, data) {
+  const uid = state.session.myId;
+  if (!uid) throw new WriteError("invalid_argument", "Sign in to submit a request.");
+  return withRetry(async () => {
+    const ref = db().doc(`requests/${uid}`);
+    const snap = await ref.get();
+    const d = snap.exists ? { ...snap.data() } : {};
+    d[reqId] = { ...(d[reqId] || {}), ...data, updatedAt: now() };
+    await ref.set(d);
+  });
+}
+
+/** Store a document (PDF, image, text) and return {id, name, type, size}. Only secretaries can upload. */
+export const MAX_UPLOAD = 20 * 1024 * 1024;
+export async function uploadFile(file) {
+  const a = state.session.assets;
+  if (!a) throw new WriteError("invalid_argument", "Only secretaries can attach documents.");
+  if (file.size > MAX_UPLOAD) throw new WriteError("too_large", "The file is larger than 20 MB.");
+  try {
+    const r = await a.upload(file);
+    return { id: r.id, name: file.name, type: r.contentType || file.type, size: r.sizeBytes || file.size, at: now(), by: state.session.myId };
+  } catch (e) {
+    if (e?.code === "unsupported_type") throw new WriteError("unsupported_type", "This file type cannot be stored. Save PowerPoint or Word files as PDF and attach the PDF.");
+    throw e;
+  }
+}
+export const fileUrl = id => "/_blob/" + id;
+
 export const today = () => isoToday();
 
 /** Human message for any write failure. */
@@ -156,7 +188,7 @@ export function errorMessage(e) {
   switch (e?.code) {
     case "invalid_argument": return "You do not have permission for this change. Secretaries need Editor access; members need Contributor access.";
     case "quota_exceeded": return "The record has reached its storage limit. Archive or export old data.";
-    case "conflict": case "not_found": case "busy": case "duplicate": return e.message;
+    case "conflict": case "not_found": case "busy": case "duplicate": case "too_large": case "unsupported_type": return e.message;
     case "revoked": return "Your access to this record was changed. Reload the page.";
     default: return "The change was not saved. Check your connection and try again.";
   }

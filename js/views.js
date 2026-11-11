@@ -6,6 +6,7 @@ import {
   CATEGORIES, DEPARTMENTS, MEETING_STATES, ITEM_STAGES, ACTION_LABELS, PERMISSIONS, ROLES,
   meetingPhase, signatureState, sigFor, awaitingSignature, itemStage, isItemOpen, isActionOpen, isOverdue,
   canEditAgenda, canEditMinutes, daysBetween, diffSnapshots,
+  OUTCOMES, BUDGETED, ATTENDANCE, charterKpis, outcomeCounts, headcountTotals, latestOutcome, quorumState, findDuplicates,
 } from "./domain.js";
 import { esc, icon, badge, btn, pageHeader, dataTable, field, msg, fmtDate, fmtDateTime, monthLabel, panelHead } from "./ui.js";
 
@@ -22,6 +23,24 @@ function actionBadge(a, today) {
   if (isOverdue(a, today)) return badge(`Overdue ${daysBetween(a.due, today)}d`, "bad");
   return badge(ACTION_LABELS[a.status] || "Open", a.status === "IN_PROGRESS" ? "info" : "neutral");
 }
+const fileUrl = id => "/_blob/" + id;
+const fmtSize = n => n > 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`;
+const fmtOMR = n => n == null || n === "" ? "—" : `OMR ${Number(n).toLocaleString("en-GB")}`;
+/** Compact manpower facts line for cards and tables. */
+function factsLine(it) {
+  const parts = [];
+  if (it.hcRequested != null && it.hcRequested !== "") parts.push(`${it.hcRequested} position${Number(it.hcRequested) === 1 ? "" : "s"}`);
+  if (it.grade) parts.push(/^grade\b/i.test(it.grade) ? esc(it.grade) : `Grade ${esc(it.grade)}`);
+  if (it.budgeted) parts.push(esc(it.budgeted));
+  if (it.annualCost != null && it.annualCost !== "") parts.push(`${esc(fmtOMR(it.annualCost))}/yr`);
+  if (it.effectiveDate) parts.push(`Effective ${fmtDate(it.effectiveDate)}`);
+  return parts.length ? `<span class="chips">${parts.map(p => `<span class="chip">${p}</span>`).join("")}</span>` : "";
+}
+function docList(ctx, it, kind, canEdit) {
+  const docs = (it.attachments || []).filter(a => (a.kind || "request") === kind);
+  return `${docs.length ? `<ul class="docs">${docs.map(a => `<li>${icon("items")}<a href="${esc(fileUrl(a.id))}" target="_blank" rel="noopener">${esc(a.name)}</a><span class="hint">${esc(fmtSize(a.size || 0))} · ${fmtDate(a.at)} · ${esc(ctx.name(a.by))}</span>${canEdit ? btn("Remove", "doc.remove", { kind: "ghost", data: { id: it.id, doc: a.id } }) : ""}</li>`).join("")}</ul>` : `<p class="empty">No documents attached.</p>`}
+  ${canEdit ? `<label class="upload">${icon("plus")}<span>Attach ${kind === "closure" ? "closure evidence" : "a document"}</span><input type="file" data-action="doc.upload" data-id="${esc(it.id)}" data-kind="${kind}" accept=".pdf,image/*,.txt,.csv,.md,application/pdf"></label><div class="hint">PDF, image or text, up to 20 MB. Save PowerPoint and Word files as PDF first.</div>` : ""}`;
+}
 const refLink = it => `<a href="#items" class="ref" data-action="item.open" data-id="${esc(it.id)}">${esc(it.ref)}</a>`;
 const person = (ctx, uid) => `<span class="person">${esc(ctx.name(uid))}</span>`;
 const readOnlyNote = ctx => ctx.role === "Secretary" ? "" : msg("info", `You are signed in as <b>${esc(ctx.role)}</b>. You can view records${ctx.role === "Viewer" ? "" : " and sign minutes"}; only secretaries can change them.`);
@@ -37,43 +56,60 @@ export function dashboard(ctx) {
   const review = meetingsArr(ctx).filter(m => m.status === "circulated");
   const pendSigs = review.reduce((n, m) => n + signatureState(m, ctx.d.sigs).pending, 0);
   const myTasks = myReviewTasks(ctx);
+  const k = charterKpis(ctx.d, ctx.today);
+  const hc = headcountTotals(ctx.d);
+  const newReqs = ctx.role === "Secretary" ? pendingRequests(ctx).length : 0;
   const stageCounts = ITEM_STAGES.map(s => [s, items.filter(i => stageOf(ctx, i) === s).length]);
-  const maxStage = Math.max(1, ...stageCounts.map(x => x[1]));
+  const outcomes = outcomeCounts(ctx.d);
   const depts = DEPARTMENTS.map(d => [d, open.filter(i => i.dept === d).length, closed.filter(i => i.dept === d).length]).filter(r => r[1] + r[2]);
   const kpi = (label, val, note, filter, tone = "") => `<button class="kpi ${tone}" data-action="nav.items" data-filter="${esc(JSON.stringify(filter))}"><span class="kpi-l">${esc(label)}</span><span class="kpi-v">${val}</span><span class="kpi-n">${esc(note)}</span></button>`;
+  const stat = (label, val, note, tone = "") => `<div class="kpi static ${tone}"><span class="kpi-l">${esc(label)}</span><span class="kpi-v">${val}</span><span class="kpi-n">${esc(note)}</span></div>`;
+  const bars = (rows, filterOf, max = Math.max(1, ...rows.map(r => r[1]))) => `<div class="bars">${rows.map(([l, n]) => `<button class="bar-row" ${filterOf ? `data-action="nav.items" data-filter="${esc(JSON.stringify(filterOf(l)))}"` : ""} ${n && filterOf ? "" : "disabled"}><span class="bar-l" title="${esc(l)}">${esc(l)}</span><span class="bar-t"><span class="bar-f" style="width:${(n / max) * 100}%"></span></span><span class="bar-n">${n}</span></button>`).join("")}</div>`;
+  const upcoming = meetingsArr(ctx).filter(m => m.status !== "archived").slice().reverse().slice(0, 4);
   return `${pageHeader({ title: "Committee overview", sub: `Live figures as of ${fmtDate(ctx.today)}. Each agenda item is counted once, however many meetings it went to.`,
       actions: ctx.role === "Secretary" ? btn("New agenda item", "item.new", { ic: "plus" }) + btn("New meeting", "meeting.new", { kind: "primary", ic: "plus" }) : "" })}
   ${myTasks.length ? msg("info", `<b>${myTasks.length} set${myTasks.length > 1 ? "s" : ""} of minutes need${myTasks.length > 1 ? "" : "s"} your ${myTasks.some(t => t.role === "chairman") ? "approval or " : ""}signature.</b>`, btn("Open review queue", "nav.go", { kind: "primary", data: { to: "review" } })) : ""}
+  ${newReqs ? msg("info", `<b>${newReqs} new request${newReqs > 1 ? "s" : ""} from departments</b> waiting to be accepted as agenda items.`, btn("Open requests", "nav.go", { kind: "primary", data: { to: "requests" } })) : ""}
   <section class="kpi-strip" aria-label="Key figures">
-    ${kpi("Open items", open.length, "Awaiting decision or follow-up", { status: "open" })}
+    ${kpi("Open items", open.length, `${hc.requested} position${hc.requested === 1 ? "" : "s"} requested on open items`, { status: "open" })}
     ${kpi("Closed items", closed.length, "Follow-up complete, evidence recorded", { status: "CLOSED" })}
     <button class="kpi ${overdue.length ? "bad" : ""}" data-action="nav.actions" data-filter='{"overdue":true}'><span class="kpi-l">Overdue actions</span><span class="kpi-v">${overdue.length}</span><span class="kpi-n">Past due date, not done</span></button>
     ${kpi("Pending signatures", pendSigs, `Across ${review.length} set${review.length === 1 ? "" : "s"} of minutes under review`, { status: "", pending: true }, pendSigs ? "warn" : "")}
   </section>
+  <section class="card"><div class="card-h"><h2>Project charter measures</h2><span class="hint">From the WPC Process Automation charter</span></div>
+    <div class="kpi-strip inner">
+      ${stat("Request to decision", k.cycleDays == null ? "—" : `${k.cycleDays} days`, k.decidedCount ? `Average over ${k.decidedCount} decided item${k.decidedCount > 1 ? "s" : ""}` : "No item decided yet")}
+      ${stat("Complete first time", k.firstTimePct == null ? "—" : `${k.firstTimePct}%`, "Decided without being returned for clarification")}
+      ${stat("Open over 30 days", k.aged30, "Open items submitted more than 30 days ago", k.aged30 ? "warn" : "")}
+      ${stat("Positions approved", hc.approved, "Headcount in final decisions (approved, EXCO, circulation)")}
+    </div>
+    <p class="hint">Member satisfaction, the fourth charter measure, needs a survey and is not measured in WPC Hub.</p>
+  </section>
   <div class="cols-2">
-    <section class="card"><div class="card-h"><h2>Items by category</h2><span class="hint">Select a count to see the items</span></div>
-      <table class="grid compact"><thead><tr><th scope="col">Category</th><th scope="col" class="num">Open</th><th scope="col" class="num">Closed</th><th scope="col" class="num">Total</th></tr></thead><tbody>
-      ${Object.keys(CATEGORIES).map(c => { const o = open.filter(i => i.category === c).length, cl = closed.filter(i => i.category === c).length;
-        const link = (n, f) => n ? `<button class="count-link" data-action="nav.items" data-filter="${esc(JSON.stringify(f))}" aria-label="${n} ${esc(c)} items">${n}</button>` : `<span class="zero">0</span>`;
-        return `<tr><td>${esc(c)}</td><td class="num">${link(o, { cat: c, status: "open" })}</td><td class="num">${link(cl, { cat: c, status: "CLOSED" })}</td><td class="num">${o + cl}</td></tr>`; }).join("")}
-      </tbody><tfoot><tr><th scope="row">Total</th><td class="num">${open.length}</td><td class="num">${closed.length}</td><td class="num">${open.length + closed.length}</td></tr></tfoot></table>
-    </section>
-    <section class="card"><div class="card-h"><h2>Items by stage</h2><span class="hint">Select a stage to see its items</span></div>
-      <div class="bars">${stageCounts.map(([s, n]) => `<button class="bar-row" data-action="nav.items" data-filter="${esc(JSON.stringify({ stage: s, status: "" }))}" ${n ? "" : "disabled"}><span class="bar-l">${esc(s)}</span><span class="bar-t"><span class="bar-f" style="width:${(n / maxStage) * 100}%"></span></span><span class="bar-n">${n}</span></button>`).join("")}</div>
-    </section>
+    <section class="card"><div class="card-h"><h2>Decisions by outcome</h2><span class="hint">All meetings</span></div>${bars(outcomes, null)}</section>
+    <section class="card"><div class="card-h"><h2>Items by stage</h2><span class="hint">Select a stage to see its items</span></div>${bars(stageCounts, s => ({ stage: s, status: "" }))}</section>
   </div>
   <div class="cols-2">
-    <section class="card"><div class="card-h"><h2>Minutes under review</h2></div>
-      ${review.length ? `<table class="grid compact"><thead><tr><th scope="col">Meeting</th><th scope="col">Version</th><th scope="col" class="num">Signed</th><th scope="col">Status</th></tr></thead><tbody>${review.map(m => { const s = signatureState(m, ctx.d.sigs);
-        return `<tr><td><a href="#meetings" data-action="meeting.open" data-id="${esc(m.id)}">${esc(m.title)}</a><div class="hint">${fmtDate(m.date)}</div></td><td>v${m.version}</td><td class="num">${s.signed}/${s.total}</td><td>${phaseBadge(ctx, m)}</td></tr>`; }).join("")}</tbody></table>` : `<p class="empty">No minutes are waiting for signatures.</p>`}
+    <section class="card"><div class="card-h"><h2>Items by category</h2><span class="hint">Select a count to see the items</span></div>
+      <div class="table-scroll"><table class="grid compact"><thead><tr><th scope="col">Category</th><th scope="col" class="num">Open</th><th scope="col" class="num">Closed</th><th scope="col" class="num">Positions requested</th></tr></thead><tbody>
+      ${Object.keys(CATEGORIES).map(c => { const o = open.filter(i => i.category === c), cl = closed.filter(i => i.category === c).length;
+        const link = (n, f) => n ? `<button class="count-link" data-action="nav.items" data-filter="${esc(JSON.stringify(f))}" aria-label="${n} ${esc(c)} items">${n}</button>` : `<span class="zero">0</span>`;
+        return `<tr><td>${esc(c)}</td><td class="num">${link(o.length, { cat: c, status: "open" })}</td><td class="num">${link(cl, { cat: c, status: "CLOSED" })}</td><td class="num">${o.reduce((n, i) => n + (Number(i.hcRequested) || 0), 0) || "—"}</td></tr>`; }).join("")}
+      </tbody></table></div>
+    </section>
+    <section class="card"><div class="card-h"><h2>Age of open items</h2><span class="hint">Days since submission</span></div>${bars(k.ageBuckets, null)}</section>
+  </div>
+  <div class="cols-2">
+    <section class="card"><div class="card-h"><h2>Meetings in progress</h2>${btn("All meetings", "nav.go", { kind: "ghost", data: { to: "meetings" } })}</div>
+      ${upcoming.length ? `<div class="table-scroll"><table class="grid compact"><thead><tr><th scope="col">Meeting</th><th scope="col" class="num">Items</th><th scope="col">Status</th></tr></thead><tbody>${upcoming.map(m => `<tr><td><a href="#meetings" data-action="meeting.open" data-id="${esc(m.id)}">${esc(m.title)}</a><div class="hint">${fmtDate(m.date)}${m.time ? ` · ${esc(m.time)}` : ""}${m.location ? ` · ${esc(m.location)}` : ""}</div></td><td class="num">${m.agenda.length}</td><td>${phaseBadge(ctx, m)}</td></tr>`).join("")}</tbody></table></div>` : `<p class="empty">No open meetings. Create the next one from New meeting.</p>`}
     </section>
     <section class="card"><div class="card-h"><h2>Open items by department</h2></div>
-      ${depts.length ? `<table class="grid compact"><thead><tr><th scope="col">Department</th><th scope="col" class="num">Open</th><th scope="col" class="num">Closed</th></tr></thead><tbody>${depts.map(([d, o, c]) => `<tr><td>${esc(d)}</td><td class="num">${o ? `<button class="count-link" data-action="nav.items" data-filter="${esc(JSON.stringify({ dept: d, status: "open" }))}">${o}</button>` : 0}</td><td class="num">${c}</td></tr>`).join("")}</tbody></table>` : `<p class="empty">No items yet.</p>`}
+      ${depts.length ? `<div class="table-scroll"><table class="grid compact"><thead><tr><th scope="col">Department</th><th scope="col" class="num">Open</th><th scope="col" class="num">Closed</th></tr></thead><tbody>${depts.map(([d, o, c]) => `<tr><td>${esc(d)}</td><td class="num">${o ? `<button class="count-link" data-action="nav.items" data-filter="${esc(JSON.stringify({ dept: d, status: "open" }))}">${o}</button>` : 0}</td><td class="num">${c}</td></tr>`).join("")}</tbody></table></div>` : `<p class="empty">No items yet.</p>`}
     </section>
   </div>
   <section class="card"><div class="card-h"><h2>Overdue follow-up actions</h2>${overdue.length ? btn("View all actions", "nav.go", { kind: "ghost", data: { to: "actions" } }) : ""}</div>
-    ${overdue.length ? `<table class="grid compact"><thead><tr><th scope="col">Item</th><th scope="col">Action</th><th scope="col">Responsible</th><th scope="col">Due</th><th scope="col">Status</th></tr></thead><tbody>${overdue.sort((a, b) => a.due.localeCompare(b.due)).slice(0, 8).map(a => { const it = ctx.d.items[a.itemId];
-      return `<tr class="row-bad"><td>${it ? refLink(it) : "—"}</td><td>${esc(a.text)}</td><td>${esc(a.owner)}</td><td class="num">${fmtDate(a.due)}</td><td>${actionBadge(a, ctx.today)}</td></tr>`; }).join("")}</tbody></table>` : `<p class="empty">No overdue actions.</p>`}
+    ${overdue.length ? `<div class="table-scroll"><table class="grid compact"><thead><tr><th scope="col">Item</th><th scope="col">Action</th><th scope="col">Responsible</th><th scope="col">Due</th><th scope="col">Status</th></tr></thead><tbody>${overdue.sort((a, b) => a.due.localeCompare(b.due)).slice(0, 8).map(a => { const it = ctx.d.items[a.itemId];
+      return `<tr class="row-bad"><td>${it ? refLink(it) : "—"}</td><td>${esc(a.text)}</td><td>${esc(a.owner)}</td><td class="num">${fmtDate(a.due)}</td><td>${actionBadge(a, ctx.today)}</td></tr>`; }).join("")}</tbody></table></div>` : `<p class="empty">No overdue actions.</p>`}
   </section>`;
 }
 
@@ -130,6 +166,7 @@ export function itemsView(ctx) {
       { key: "title", label: "Item", render: r => `${esc(r.title)}${r.example ? ` <span class="tag">Example</span>` : ""}<div class="hint">${esc(r.sub || "")}</div>` },
       { key: "category", label: "Category" },
       { key: "dept", label: "Department" },
+      { key: "hcRequested", label: "Positions", num: true, value: r => Number(r.hcRequested) || 0, render: r => r.hcRequested != null && r.hcRequested !== "" ? String(r.hcRequested) : "—" },
       { key: "owner", label: "Responsible" },
       { key: "meetings", label: "Meetings", num: true, value: r => meetingsOf(ctx, r).length, render: r => String(meetingsOf(ctx, r).length) },
       { key: "openActions", label: "Open actions", num: true, value: r => actionsArr(ctx).filter(a => a.itemId === r.id && isActionOpen(a)).length, render: r => String(actionsArr(ctx).filter(a => a.itemId === r.id && isActionOpen(a)).length) },
@@ -143,6 +180,7 @@ export function itemPanel(ctx, it) {
   const audit = Object.values(ctx.d.audit).filter(e => e.entityId === it.id).sort((a, b) => b.at.localeCompare(a.at)).slice(0, 12);
   const sec = ctx.role === "Secretary";
   const stage = stageOf(ctx, it);
+  const lo = latestOutcome(it, ctx.d);
   return `${panelHead(it.title, `<span class="ref">${esc(it.ref)}</span> · ${esc(it.category)} · ${esc(it.sub || "")}`)}
   <div class="panel-body">
     <div class="obj-status">${badge(stage)}${it.archived ? badge("Archived", "neutral") : ""}
@@ -152,41 +190,58 @@ export function itemPanel(ctx, it) {
     <dl class="facts">
       <div><dt>Requesting department</dt><dd>${esc(it.dept)}</dd></div>
       <div><dt>Responsible</dt><dd>${esc(it.owner || "—")}</dd></div>
-      <div><dt>Submitted</dt><dd>${fmtDate(it.createdAt)}</dd></div>
+      <div><dt>Positions requested</dt><dd>${it.hcRequested != null && it.hcRequested !== "" ? esc(it.hcRequested) : "—"}</dd></div>
+      <div><dt>Positions approved</dt><dd>${lo && lo.mn.hcApproved != null && lo.mn.hcApproved !== "" ? `${esc(lo.mn.hcApproved)} <span class="hint">(${esc(lo.m.ref)})</span>` : "—"}</dd></div>
+      <div><dt>Grade</dt><dd>${esc(it.grade || "—")}</dd></div>
+      <div><dt>Budget</dt><dd>${esc(it.budgeted || "—")}${it.annualCost != null && it.annualCost !== "" ? ` · ${esc(fmtOMR(it.annualCost))} a year` : ""}</dd></div>
+      <div><dt>Effective date</dt><dd>${fmtDate(it.effectiveDate)}</dd></div>
+      <div><dt>Latest outcome</dt><dd>${lo ? `${badge(lo.mn.outcome, outcomeTone(lo.mn.outcome))} <span class="hint">${fmtDate(lo.m.date)}</span>` : "—"}</dd></div>
+      <div><dt>Submitted</dt><dd>${fmtDate(it.createdAt)}${it.requestKey ? ' <span class="hint">by department request</span>' : ""}</dd></div>
       <div><dt>Last changed</dt><dd>${it.updatedAt ? `${fmtDateTime(it.updatedAt)} by ${esc(ctx.name(it.updatedBy))}` : "—"}</dd></div>
       <div class="wide"><dt>Request</dt><dd class="pre">${esc(it.request || "—")}</dd></div>
     </dl>
+    <section class="sec"><h3>Documents</h3>${docList(ctx, it, "request", sec && !it.archived && !!ctx.s.assets)}</section>
     <section class="sec"><h3>History across meetings</h3>
       ${ms.length ? `<ol class="timeline">${ms.map(m => { const mn = ctx.d.minutes[`${m.id}__${it.id}`] || {};
         return `<li><div class="tl-h"><a href="#meetings" data-action="meeting.open" data-id="${esc(m.id)}">${esc(m.title)}</a><span class="hint">${fmtDate(m.date)}</span>${phaseBadge(ctx, m)}</div>
-          <div class="tl-b"><div><span class="lbl">Discussion</span><p class="pre">${esc(mn.discussion || "—")}</p></div><div><span class="lbl">Recommendation / decision</span><p class="pre">${esc(mn.decision || "—")}</p></div></div></li>`; }).join("")}</ol>` : `<p class="empty">Not yet on a meeting agenda.</p>`}
+          <div class="tl-b"><div><span class="lbl">Discussion</span><p class="pre">${esc(mn.discussion || "—")}</p></div><div><span class="lbl">Outcome and decision</span><p>${mn.outcome ? badge(mn.outcome, outcomeTone(mn.outcome)) : ""}${mn.hcApproved != null && mn.hcApproved !== "" ? ` <span class="hint">${esc(mn.hcApproved)} approved</span>` : ""}</p><p class="pre">${esc(mn.decision || (mn.outcome ? "" : "—"))}</p></div></div></li>`; }).join("")}</ol>` : `<p class="empty">Not yet on a meeting agenda.</p>`}
     </section>
     <section class="sec"><h3>Follow-up actions</h3>
       ${acts.length ? `<table class="grid compact"><thead><tr><th scope="col">Action</th><th scope="col">Responsible</th><th scope="col">Due</th><th scope="col">Status</th></tr></thead><tbody>${acts.map(a => `<tr class="${isOverdue(a, ctx.today) ? "row-bad" : ""}"><td>${esc(a.text)}</td><td>${esc(a.owner)}</td><td class="num">${fmtDate(a.due)}</td><td>${sec ? actionStatusSelect(a) : actionBadge(a, ctx.today)}</td></tr>`).join("")}</tbody></table>` : `<p class="empty">No actions recorded.</p>`}
     </section>
     <section class="sec"><h3>Closure</h3>
-      ${it.status === "CLOSED" ? `<dl class="facts"><div><dt>Closed on</dt><dd>${fmtDate(it.closedDate)}</dd></div><div><dt>Closed by</dt><dd>${esc(ctx.name(it.closedBy))}</dd></div><div class="wide"><dt>Supporting evidence</dt><dd class="pre">${esc(it.evidence || "—")}</dd></div></dl>`
+      ${it.status === "CLOSED" ? `<dl class="facts"><div><dt>Closed on</dt><dd>${fmtDate(it.closedDate)}</dd></div><div><dt>Closed by</dt><dd>${esc(ctx.name(it.closedBy))}</dd></div><div class="wide"><dt>Supporting evidence</dt><dd class="pre">${esc(it.evidence || "—")}</dd></div></dl>${docList(ctx, it, "closure", sec && !it.archived && !!ctx.s.assets)}`
         : it.status === "WITHDRAWN" ? `<p>Withdrawn on ${fmtDate(it.closedDate)}. Reason: ${esc(it.evidence || "—")}</p>`
         : sec ? `<p class="hint">Signed minutes do not close an item. Close it when the follow-up is complete.</p>
           <form class="form" data-form="item.close" data-id="${esc(it.id)}" novalidate>
             ${field({ id: "closedDate", label: "Closure date", type: "date", value: ctx.today, required: true, attrs: `max="${ctx.today}"` })}
             ${field({ id: "evidence", label: "Supporting evidence", type: "textarea", required: true, wide: true, rows: 2, hint: "e.g. renewal letter reference, SuccessFactors record updated, org chart published" })}
-            <div class="form-actions wide">${btn("Close item", null, { kind: "primary", type: "submit" })}</div></form>` : `<p class="empty">Open.</p>`}
+            <div class="form-actions wide">${btn("Close item", null, { kind: "primary", type: "submit" })}</div></form>
+          <span class="lbl">Evidence documents</span>${docList(ctx, it, "closure", !!ctx.s.assets)}` : `<p class="empty">Open.</p>`}
     </section>
     <section class="sec"><h3>Change log</h3>
       ${audit.length ? `<ul class="log">${audit.map(e => `<li><span class="hint">${fmtDateTime(e.at)}</span> ${esc(ctx.name(e.by))}: ${esc(e.action)}${e.detail ? ` <span class="hint">(${esc(e.detail)})</span>` : ""}</li>`).join("")}</ul>` : `<p class="empty">No changes logged yet.</p>`}
     </section>
   </div>`;
 }
+export const outcomeTone = o => ({ Approved: "ok", "Approved with conditions": "ok", "Recommended to EXCO": "info", "Endorsed by circulation": "ok", Rejected: "bad", Deferred: "warn", "Returned for clarification": "warn" }[o] || "neutral");
 const actionStatusSelect = a => `<select class="inline-select" data-action="action.status" data-id="${esc(a.id)}" aria-label="Status of ${esc(a.text)}">${Object.entries(ACTION_LABELS).map(([k, l]) => `<option value="${k}" ${a.status === k ? "selected" : ""}>${l}</option>`).join("")}</select>`;
 
-export function itemForm(ctx, it, { meetingId = "", errors = {}, values = null, dupes = [] } = {}) {
-  const v = values || it || { category: "Expatriate contract renewal", sub: "Renewal on same terms", dept: "Potline", owner: "", title: "", request: "" };
+export const manpowerFields = (v, errors = {}) => `<fieldset class="fieldset wide"><legend>Manpower details</legend><div class="form inner">
+  ${field({ id: "hcRequested", label: "Positions requested", type: "number", value: v.hcRequested ?? "", error: errors.hcRequested, attrs: 'min="0" step="1" inputmode="numeric"' })}
+  ${field({ id: "grade", label: "Grade", value: v.grade || "", attrs: 'maxlength="20"', hint: "As in the job structure" })}
+  ${field({ id: "budgeted", label: "Budget", value: v.budgeted || "", options: BUDGETED.map(b => [b, b || "Not stated"]), error: errors.budgeted })}
+  ${field({ id: "annualCost", label: "Estimated annual cost (OMR)", type: "number", value: v.annualCost ?? "", error: errors.annualCost, attrs: 'min="0" step="any" inputmode="decimal"' })}
+  ${field({ id: "effectiveDate", label: "Effective Date", type: "date", value: v.effectiveDate || "", error: errors.effectiveDate })}
+  </div><p class="hint">Leave blank what does not apply (for example, an organisation change).</p></fieldset>`;
+
+export function itemForm(ctx, it, { meetingId = "", errors = {}, values = null, dupes = [], requestKey = "" } = {}) {
+  const v = values || it || { category: "Expatriate contract renewal", sub: "Renewal on same terms", dept: "Potline", owner: "", title: "", request: "", budgeted: "" };
   const subs = CATEGORIES[v.category] || CATEGORIES.Other;
   return `${panelHead(it ? `Edit ${it.ref}` : "New agenda item", it ? "Changes are logged with your name and time." : "A unique reference is assigned when you save.")}
   <div class="panel-body">
     ${dupes.length ? msg("warn", `<b>Possible duplicate.</b> ${dupes.length === 1 ? "This open item looks similar" : "These open items look similar"}: ${dupes.map(x => `<span class="ref">${esc(x.item.ref)}</span> ${esc(x.item.title)}`).join("; ")}. Open the existing item instead, or save again to create a separate item.`) : ""}
-    <form class="form" data-form="${it ? "item.update" : "item.create"}" data-id="${esc(it?.id || "")}" data-meeting="${esc(meetingId)}" data-rev="${esc(it?.rev ?? 0)}" data-dupeok="${dupes.length ? "1" : ""}" novalidate>
+    <form class="form" data-form="${it ? "item.update" : "item.create"}" data-id="${esc(it?.id || "")}" data-meeting="${esc(meetingId)}" data-request="${esc(requestKey)}" data-rev="${esc(it?.rev ?? 0)}" data-dupeok="${dupes.length ? "1" : ""}" novalidate>
       ${errors.form ? msg("error", esc(errors.form)) : ""}
       ${field({ id: "title", label: "Item title", value: v.title, required: true, wide: true, error: errors.title, attrs: 'maxlength="150" autofocus' })}
       ${field({ id: "category", label: "Category", value: v.category, options: Object.keys(CATEGORIES), required: true, error: errors.category, attrs: 'data-action="form.category"' })}
@@ -194,6 +249,8 @@ export function itemForm(ctx, it, { meetingId = "", errors = {}, values = null, 
       ${field({ id: "dept", label: "Requesting department", value: v.dept, options: DEPARTMENTS, required: true, error: errors.dept })}
       ${field({ id: "owner", label: "Responsible", value: v.owner, required: true, error: errors.owner, hint: "Role or name, e.g. HR Manager" })}
       ${field({ id: "request", label: "Request", type: "textarea", value: v.request, required: true, wide: true, rows: 4, error: errors.request, hint: "What the department asks the committee to decide" })}
+      ${manpowerFields(v, errors)}
+      ${it ? field({ id: "returned", label: "Returned to the department for clarification?", value: it.returned ? "yes" : "", options: [["", "No"], ["yes", "Yes"]], hint: "Counts against the charter measure \u201ccomplete first time\u201d." }) : ""}
       <div class="form-actions wide">${btn("Cancel", "layer.close")}${btn(it ? "Save changes" : dupes.length ? "Create anyway" : "Create item", null, { kind: "primary", type: "submit" })}</div>
     </form>
     <p class="hint">Categories and subcategories are proposals to be confirmed by the committee.</p>
@@ -244,14 +301,16 @@ export function meetingDetail(ctx, m) {
     if (m.status === "circulated" && ["approved", "signed"].includes(ph.key)) transitions.push(btn("Archive approved minutes", "meeting.transition", { kind: "primary", ic: "archive", data: { id: m.id, to: "archived" } }));
     if (m.status !== "archived") transitions.unshift(btn("Edit details", "meeting.edit", { ic: "edit", data: { id: m.id } }));
   }
-  const tabs = [["agenda", `Agenda and minutes (${agenda.length})`], ["signatures", "Signatures"], ["versions", `Versions (${m.versions.length})`], ["log", "Change log"]];
+  if (ctx.s.downloads && agenda.length) transitions.unshift(btn(m.snapshot ? `Download minutes v${m.version} (Word)` : "Download draft (Word)", "minutes.download", { ic: "download", data: { id: m.id } }));
+  const q = quorumState(m, ctx.d.roster.quorum);
+  const tabs = [["agenda", `Agenda and minutes (${agenda.length})`], ["attendance", `Attendance (${q.present})`], ["signatures", "Signatures"], ["versions", `Versions (${m.versions.length})`], ["log", "Change log"]];
   return `${pageHeader({ crumbs: [{ label: "Meetings", href: "#meetings", action: "meeting.back" }, { label: m.title }], title: m.title,
-      sub: `<span class="ref">${esc(m.ref)}</span> · ${fmtDate(m.date)}${m.version ? ` · minutes v${m.version}` : ""} · ${phaseBadge(ctx, m)}`, actions: transitions.join("") })}
+      sub: `<span class="ref">${esc(m.ref)}</span> · ${fmtDate(m.date)}${m.time ? ` · ${esc(m.time)}` : ""}${m.location ? ` · ${esc(m.location)}` : ""}${m.version ? ` · minutes v${m.version}` : ""} · ${phaseBadge(ctx, m)}${q.required ? ` · ${badge(q.met ? `Quorum met (${q.present}/${q.required})` : `No quorum (${q.present}/${q.required})`, q.met ? "ok" : "bad")}` : ""}`, actions: transitions.join("") })}
   ${stepper(ctx, m)}
   ${banners(ctx, m, ph, s)}
   <div class="tabs" role="tablist">${tabs.map(([k, l]) => `<button role="tab" aria-selected="${tab === k}" class="tab ${tab === k ? "on" : ""}" data-action="meeting.tab" data-tab="${k}">${esc(l)}</button>`).join("")}</div>
   <div class="tabpanel" role="tabpanel">
-  ${tab === "agenda" ? agendaTab(ctx, m, agenda) : tab === "signatures" ? signaturesTab(ctx, m, s) : tab === "versions" ? versionsTab(ctx, m) : meetingLog(ctx, m)}
+  ${tab === "agenda" ? agendaTab(ctx, m, agenda) : tab === "attendance" ? attendanceTab(ctx, m, q) : tab === "signatures" ? signaturesTab(ctx, m, s) : tab === "versions" ? versionsTab(ctx, m) : meetingLog(ctx, m)}
   </div>`;
 }
 
@@ -270,6 +329,18 @@ function banners(ctx, m, ph, s) {
   }
   if (m.status === "archived") out.push(msg("ok", `Final minutes v${m.version} archived on ${fmtDateTime(m.archivedAt)}. The record is locked.`));
   return out.join("");
+}
+
+/** People expected at the meeting: roster, Chairman and the meeting's signers. */
+export const attendees = (ctx, m) => [...new Set([m.chairman, ctx.d.roster.chairman, ...(ctx.d.roster.members || []), ...m.members, ...Object.keys(m.attendance || {})].filter(Boolean))];
+function attendanceTab(ctx, m, q) {
+  const people = attendees(ctx, m);
+  const edit = ctx.role === "Secretary" && !["circulated", "archived"].includes(m.status);
+  const att = m.attendance || {};
+  return `<section class="card"><div class="card-h"><h2>Attendance</h2><span class="hint">${q.required ? `Quorum: ${q.required} present. ${q.met ? "Met." : "Not met."}` : "Quorum not set. A secretary can set it under Users and permissions."}</span></div>
+    ${people.length ? `<div class="table-scroll"><table class="grid compact"><thead><tr><th scope="col">Name</th><th scope="col">Committee role</th><th scope="col">Attendance</th></tr></thead><tbody>${people.map(u => `<tr><td>${person(ctx, u)}</td><td>${u === (m.chairman || ctx.d.roster.chairman) ? "Chairman" : "Member"}</td><td>${edit ? `<select class="inline-select" data-action="attendance.set" data-id="${esc(m.id)}" data-user="${esc(u)}" aria-label="Attendance of ${esc(ctx.name(u))}"><option value="">Not recorded</option>${ATTENDANCE.map(a => `<option ${att[u] === a ? "selected" : ""}>${a}</option>`).join("")}</select>` : att[u] ? badge(att[u], att[u] === "Present" ? "ok" : att[u] === "Absent" ? "bad" : "neutral") : "—"}</td></tr>`).join("")}</tbody></table></div>` : `<p class="empty">No committee people yet. Add the roster under Users and permissions, or signers under Signatures.</p>`}
+    ${edit ? `<p class="hint">Attendance is part of the minutes and is frozen with each circulated version.</p>` : ""}
+  </section>`;
 }
 
 function presenceFor(ctx, key) {
@@ -305,9 +376,13 @@ function minuteBlock(ctx, m, it, n, editAgenda, editMin) {
     <div class="minute-h"><div><span class="num-badge">${n}</span> ${refLink(it)} <h3 id="mi-${esc(key)}">${esc(it.title)}</h3>
       <div class="hint">${esc(it.category)} · ${esc(it.sub || "")} · ${esc(it.dept)} · Responsible: ${esc(it.owner || "—")}${prior.length ? ` · previously discussed in ${prior.length} meeting${prior.length > 1 ? "s" : ""}` : ""}</div></div>
       <div class="minute-tools">${presenceFor(ctx, key)}${badge(stageOf(ctx, it))}${editAgenda ? btn("Remove", "agenda.remove", { kind: "ghost", data: { id: m.id, item: it.id } }) : ""}</div></div>
-    <div class="req"><span class="lbl">Request</span><p class="pre">${esc(it.request || "—")}</p></div>
+    <div class="req-line">${factsLine(it)}<p class="pre">${esc(it.request || "—")}</p>${(it.attachments || []).filter(a => (a.kind || "request") === "request").map(a => `<a class="doc-link" href="${esc(fileUrl(a.id))}" target="_blank" rel="noopener">${icon("items")}${esc(a.name)}</a>`).join("")}</div>
     ${prior.length ? `<details class="prior"><summary>Earlier decisions (${prior.length})</summary>${prior.map(p => { const pm = ctx.d.minutes[`${p.id}__${it.id}`] || {}; return `<p><b>${esc(p.title)}, ${fmtDate(p.date)}:</b> ${esc(pm.decision || "No decision recorded")}</p>`; }).join("")}</details>` : ""}
-    ${showMin ? `<div class="minute-grid">${ta("discussion", "Discussion summary", "Key points raised")}${ta("decision", "Recommendation / decision", "e.g. Recommended: renew for 2 years")}</div>
+    ${showMin ? `<div class="outcome-row">${editMin
+        ? `<div class="field"><label for="out-${key}">Outcome<span class="req" aria-hidden="true">*</span></label><select id="out-${key}" data-action="minute.outcome" data-minute="${esc(key)}"><option value="">Choose…</option>${Object.keys(OUTCOMES).map(o => `<option ${mn.outcome === o ? "selected" : ""}>${o}</option>`).join("")}</select></div>
+           <div class="field"><label for="hc-${key}">Positions approved</label><input id="hc-${key}" type="number" min="0" step="1" data-action="minute.hc" data-minute="${esc(key)}" value="${esc(mn.hcApproved ?? "")}" placeholder="${esc(it.hcRequested ?? "")}"></div>`
+        : `<div><span class="lbl">Outcome</span><p>${mn.outcome ? badge(mn.outcome, outcomeTone(mn.outcome)) : "—"}${mn.hcApproved != null && mn.hcApproved !== "" ? ` <span class="hint">${esc(mn.hcApproved)} positions approved</span>` : ""}</p></div>`}</div>
+    <div class="minute-grid">${ta("discussion", "Discussion summary", "Key points raised")}${ta("decision", "Decision wording", "e.g. Recommended: renew for 2 years")}</div>
     ${mn.updatedBy ? `<div class="hint">Last saved by ${esc(ctx.name(mn.updatedBy))} at ${fmtDateTime(mn.updatedAt)} · revision ${mn.rev || 1}</div>` : ""}
     <div class="sub-sec"><span class="lbl">Follow-up actions</span>
       ${acts.length ? `<table class="grid compact"><thead><tr><th scope="col">Action</th><th scope="col">Responsible</th><th scope="col">Due</th><th scope="col">Status</th></tr></thead><tbody>${acts.map(a => `<tr class="${isOverdue(a, ctx.today) ? "row-bad" : ""}"><td>${esc(a.text)}</td><td>${esc(a.owner)}</td><td class="num">${fmtDate(a.due)}</td><td>${ctx.role === "Secretary" ? actionStatusSelect(a) : actionBadge(a, ctx.today)}</td></tr>`).join("")}</tbody></table>` : `<p class="empty">No actions yet.</p>`}
@@ -322,9 +397,10 @@ export function minutesDocument(ctx, m, snap) {
   const s = signatureState(m, ctx.d.sigs);
   return `<article class="minutes-doc" aria-label="Minutes version ${snap.v}">
     <header><div><div class="lbl">Workforce Planning Committee · Minutes of meeting</div><h2>${esc(m.title)}</h2></div>
-      <dl><div><dt>Reference</dt><dd>${esc(m.ref)}</dd></div><div><dt>Date</dt><dd>${fmtDate(m.date)}</dd></div><div><dt>Version</dt><dd>v${snap.v}${m.version !== snap.v ? " (superseded)" : ""}</dd></div><div><dt>Circulated</dt><dd>${fmtDateTime(snap.at)}</dd></div></dl></header>
-    <table class="grid doc-table"><thead><tr><th scope="col" style="width:36px">#</th><th scope="col">Item and request</th><th scope="col">Discussion</th><th scope="col">Recommendation / decision</th><th scope="col">Actions</th></tr></thead><tbody>
-    ${snap.items.map((x, i) => `<tr><td>${i + 1}</td><td><span class="ref">${esc(x.ref)}</span><div><b>${esc(x.title)}</b></div><div class="hint">${esc(x.category)} · ${esc(x.dept)}</div><p class="pre">${esc(x.request)}</p></td><td class="pre">${esc(x.discussion || "—")}</td><td class="pre"><b>${esc(x.decision || "—")}</b></td><td>${x.actions.length ? x.actions.map(a => `<div>${esc(a.text)}<div class="hint">${esc(a.owner)} · ${fmtDate(a.due)}</div></div>`).join("") : "—"}</td></tr>`).join("")}
+      <dl><div><dt>Reference</dt><dd>${esc(m.ref)}</dd></div><div><dt>Date</dt><dd>${fmtDate(m.date)}${snap.time ? ` ${esc(snap.time)}` : ""}</dd></div><div><dt>Version</dt><dd>v${snap.v}${m.version !== snap.v ? " (superseded)" : ""}</dd></div><div><dt>Circulated</dt><dd>${fmtDateTime(snap.at)}</dd></div></dl></header>
+    ${snap.location || Object.keys(snap.attendance || {}).length ? `<div class="doc-att">${snap.location ? `<div><span class="lbl">Location</span> ${esc(snap.location)}</div>` : ""}${ATTENDANCE.map(a => { const who = Object.entries(snap.attendance || {}).filter(([, s]) => s === a).map(([u]) => ctx.name(u)); return who.length ? `<div><span class="lbl">${a === "Apology" ? "Apologies" : a}</span> ${esc(who.join(", "))}</div>` : ""; }).join("")}</div>` : ""}
+    <table class="grid doc-table"><thead><tr><th scope="col" style="width:36px">#</th><th scope="col">Item and request</th><th scope="col">Discussion</th><th scope="col">Outcome and decision</th><th scope="col">Actions</th></tr></thead><tbody>
+    ${snap.items.map((x, i) => `<tr><td>${i + 1}</td><td><span class="ref">${esc(x.ref)}</span><div><b>${esc(x.title)}</b></div><div class="hint">${esc(x.category)} · ${esc(x.dept)}</div><p class="pre">${esc(x.request)}</p>${factsLine(x)}</td><td class="pre">${esc(x.discussion || "—")}</td><td>${x.outcome ? badge(x.outcome, outcomeTone(x.outcome)) : ""}${x.hcApproved != null && x.hcApproved !== "" ? `<div class="hint">${esc(x.hcApproved)} positions approved</div>` : ""}<p class="pre"><b>${esc(x.decision || (x.outcome ? "" : "—"))}</b></p></td><td>${x.actions.length ? x.actions.map(a => `<div>${esc(a.text)}<div class="hint">${esc(a.owner)} · ${fmtDate(a.due)}</div></div>`).join("") : "—"}</td></tr>`).join("")}
     </tbody></table>
     <footer><span class="lbl">Signatures on v${m.version}</span>
       <table class="grid compact"><thead><tr><th scope="col">Name</th><th scope="col">Role</th><th scope="col">Status</th><th scope="col">Date and time</th></tr></thead><tbody>
@@ -380,6 +456,8 @@ export function meetingForm(ctx, m, { errors = {}, values = null } = {}) {
     ${errors.form ? msg("error", esc(errors.form)) : ""}
     ${field({ id: "title", label: "Meeting title", value: v.title, required: true, wide: true, error: errors.title, attrs: "autofocus" })}
     ${field({ id: "date", label: "Meeting date", type: "date", value: v.date, required: true, error: errors.date })}
+    ${field({ id: "time", label: "Start time", type: "time", value: v.time || "" })}
+    ${field({ id: "location", label: "Location", value: v.location || "", attrs: 'maxlength="80"', hint: "Room, or Teams" })}
     ${field({ id: "chairman", label: "Chairman (final approval)", value: v.chairman || roster.chairman || "", options: memberOpts, hint: "People come from the committee roster under Administration." })}
     ${!m ? `<label class="chk wide"><input type="checkbox" name="bring" ${openCount ? "checked" : "disabled"}> Bring forward all ${openCount} open items</label>
     <label class="chk wide"><input type="checkbox" name="roster" checked> Add the ${(roster.members || []).length} roster members as signers</label>` : ""}
@@ -435,8 +513,8 @@ export function reviewView(ctx) {
     ${tasks.length ? `<table class="grid compact"><thead><tr><th scope="col">Meeting</th><th scope="col">Version</th><th scope="col">Your role</th><th scope="col"></th></tr></thead><tbody>${tasks.map(t => `<tr><td>${esc(t.m.title)}<div class="hint">${fmtDate(t.m.date)}</div></td><td>v${t.m.version}</td><td>${t.role === "chairman" ? "Chairman: final approval" : "Member: sign"}</td><td>${btn("Review", "meeting.open", { kind: "primary", data: { id: t.m.id } })}</td></tr>`).join("")}</tbody></table>` : `<p class="empty">Nothing is waiting for your signature.</p>`}
   </section>
   <section class="card"><div class="card-h"><h2>Signature tracking</h2></div>
-    ${tracked.length ? `<table class="grid compact"><thead><tr><th scope="col">Meeting</th><th scope="col">Version</th><th scope="col" class="num">Signed</th><th scope="col">Pending</th><th scope="col">Chairman</th><th scope="col">Status</th></tr></thead><tbody>${tracked.map(m => { const s = signatureState(m, ctx.d.sigs);
-      return `<tr><td><a href="#meetings" data-action="meeting.open" data-id="${esc(m.id)}">${esc(m.title)}</a></td><td>v${m.version}</td><td class="num">${s.signed}/${s.total}</td><td>${esc(s.rows.filter(r => !r.sig || r.sig.status !== "signed").map(r => ctx.name(r.user)).join(", ") || "—")}</td><td>${m.chairman ? (s.chairApproved ? badge("Approved") : badge("Pending")) : "Not set"}</td><td>${phaseBadge(ctx, m)}</td></tr>`; }).join("")}</tbody></table>` : `<p class="empty">No minutes have been circulated yet.</p>`}
+    ${tracked.length ? `<div class="table-scroll"><table class="grid compact"><thead><tr><th scope="col">Meeting</th><th scope="col">Version</th><th scope="col" class="num">Signed</th><th scope="col">Pending</th><th scope="col">Chairman</th><th scope="col">Status</th></tr></thead><tbody>${tracked.map(m => { const s = signatureState(m, ctx.d.sigs);
+      return `<tr><td><a href="#meetings" data-action="meeting.open" data-id="${esc(m.id)}">${esc(m.title)}</a></td><td>v${m.version}</td><td class="num">${s.signed}/${s.total}</td><td>${esc(s.rows.filter(r => !r.sig || r.sig.status !== "signed").map(r => ctx.name(r.user)).join(", ") || "—")}</td><td>${m.chairman ? (s.chairApproved ? badge("Approved") : badge("Pending")) : "Not set"}</td><td>${phaseBadge(ctx, m)}</td></tr>`; }).join("")}</tbody></table></div>` : `<p class="empty">No minutes have been circulated yet.</p>`}
   </section>`;
 }
 
@@ -486,6 +564,7 @@ export function adminView(ctx) {
         ${(r.members || []).map(u => `<tr><td>${person(ctx, u)}</td><td>Member</td>${sec ? `<td>${btn("Remove", "roster.remove", { kind: "ghost", data: { user: u, role: "member" } })}</td>` : ""}</tr>`).join("") || (r.chairman ? "" : `<tr><td colspan="3" class="empty-cell">No roster yet.</td></tr>`)}
       </tbody></table>
       ${sec ? `<div class="picker"><label for="roster-q">Add person</label><div class="picker-row"><input id="roster-q" data-action="roster.search" autocomplete="off" placeholder="Type a name"><select id="roster-role" aria-label="Committee role"><option value="member">as Member</option><option value="chairman">as Chairman</option></select></div><div class="menu" id="roster-menu" hidden></div></div>` : ""}
+      ${sec ? `<form class="inline-form quorum" data-form="roster.quorum" novalidate><label for="quorum">Quorum (people present)</label><input id="quorum" name="quorum" type="number" min="1" step="1" value="${esc(r.quorum ?? "")}" placeholder="Not set">${btn("Save quorum", null, { type: "submit" })}</form><p class="hint">Use the number in the committee's Terms of Reference. WPC Hub does not assume one.</p>` : r.quorum ? `<p>Quorum: <b>${esc(r.quorum)}</b> present.</p>` : ""}
       <p class="hint">Your role here: <b>${esc(ctx.role)}</b>. Secretaries are the people given Editor access through the Share menu.</p>
     </section>
     <section class="card"><div class="card-h"><h2>How access is granted</h2></div>
@@ -493,6 +572,7 @@ export function adminView(ctx) {
         <tr><td>Secretary</td><td>Editor</td><td>Database rule: only Editors write shared records</td></tr>
         <tr><td>Chairman</td><td>Contributor + roster</td><td>Can write only their own signature record</td></tr>
         <tr><td>Member</td><td>Contributor + roster</td><td>Can write only their own signature record</td></tr>
+        <tr><td>Requester</td><td>Contributor</td><td>Can write only their own requests</td></tr>
         <tr><td>Viewer</td><td>Viewer</td><td>Read only</td></tr>
       </tbody></table>
     </section>
@@ -502,4 +582,62 @@ export function adminView(ctx) {
     ${PERMISSIONS.map(([p, roles]) => `<tr><td>${esc(p)}</td>${ROLES.map(x => `<td class="c">${roles.includes(x) ? `<span class="yes" role="img" aria-label="Allowed">${icon("actions")}</span>` : `<span class="no" role="img" aria-label="Not allowed">–</span>`}</td>`).join("")}</tr>`).join("")}
     </tbody></table></div>
   </section>`;
+}
+
+/* ====================================================================== */
+/* Department requests (intake)                                          */
+/* ====================================================================== */
+/** Every request across all requesters, with its status derived from items and the intake record. */
+export function allRequests(ctx) {
+  const out = [];
+  const byKey = Object.fromEntries(Object.values(ctx.d.items).filter(i => i.requestKey).map(i => [i.requestKey, i]));
+  for (const [uid, doc] of Object.entries(ctx.d.requests || {})) for (const [rid, r] of Object.entries(doc || {})) {
+    if (!r || typeof r !== "object" || !r.title) continue;
+    const key = `${uid}:${rid}`;
+    const item = byKey[key];
+    const intake = ctx.d.intake?.[`${uid}__${rid}`];
+    const status = item ? "Accepted" : r.status === "withdrawn" ? "Withdrawn" : intake?.status === "returned" && (intake.at || "") >= (r.updatedAt || "") ? "Returned" : "New";
+    out.push({ ...r, uid, rid, key, item, intake, status });
+  }
+  return out.sort((a, b) => (b.submittedAt || "").localeCompare(a.submittedAt || ""));
+}
+export const pendingRequests = ctx => allRequests(ctx).filter(r => r.status === "New");
+const reqTone = s => ({ Accepted: "ok", Returned: "warn", Withdrawn: "neutral", New: "info" }[s]);
+
+export function requestsView(ctx) {
+  const sec = ctx.role === "Secretary";
+  const all = allRequests(ctx);
+  const mine = all.filter(r => r.uid === ctx.s.myId);
+  const rows = sec ? all : mine;
+  const canSubmit = !!ctx.s.myId && ctx.role !== "Viewer";
+  return `${pageHeader({ title: sec ? "Department requests" : "Submit a request", sub: sec ? "Requests sent by departments. Accept one to give it a WPC reference and put it on an agenda, or return it for clarification." : "Send a manpower or organisation request to the committee secretaries. You can follow its status here.",
+      actions: canSubmit ? btn("New request", "request.new", { kind: "primary", ic: "plus" }) : "" })}
+  ${!canSubmit ? msg("info", "To submit requests you need Contributor access to WPC Hub. Ask a committee secretary to share it with you.") : ""}
+  ${dataTable({ id: "requests", rows, tstate: ctx.ui.tables.requests, caption: "Requests", empty: sec ? "No requests yet." : "You have not submitted any requests.",
+    columns: [
+      { key: "submittedAt", label: "Submitted", render: r => fmtDate(r.submittedAt), width: "120px" },
+      ...(sec ? [{ key: "by", label: "From", value: r => ctx.name(r.uid), render: r => esc(ctx.name(r.uid)) }] : []),
+      { key: "title", label: "Request", render: r => `<b>${esc(r.title)}</b><div class="hint">${esc(r.category)} · ${esc(r.sub || "")} · ${esc(r.dept)}</div>${factsLine(r)}` },
+      { key: "status", label: "Status", render: r => `${badge(r.status, reqTone(r.status))}${r.item ? ` <a href="#items" class="ref" data-action="item.open" data-id="${esc(r.item.id)}">${esc(r.item.ref)}</a>` : ""}${r.status === "Returned" && r.intake?.reason ? `<div class="hint">${esc(r.intake.reason)}</div>` : ""}` },
+      { key: "do", label: "", sortable: false, render: r => sec
+        ? (r.status === "New" ? btn("Accept", "request.accept", { kind: "primary", data: { key: r.key } }) + btn("Return", "request.return", { data: { key: r.key } }) : "")
+        : (r.status === "New" ? btn("Withdraw", "request.withdraw", { kind: "ghost", data: { rid: r.rid } }) : r.status === "Returned" ? btn("Edit and resend", "request.edit", { data: { rid: r.rid } }) : "") },
+    ] })}`;
+}
+
+export function requestForm(ctx, r = null, { errors = {}, values = null } = {}) {
+  const v = values || r || { category: "Manpower requirement", sub: "New position (budgeted)", dept: "Operations", owner: "", title: "", request: "", budgeted: "" };
+  const subs = CATEGORIES[v.category] || CATEGORIES.Other;
+  return `${panelHead(r ? "Edit and resend request" : "New request to the committee", "The secretaries review it before it goes on an agenda.")}
+  <div class="panel-body"><form class="form" data-form="request.submit" data-rid="${esc(r?.rid || "")}" novalidate>
+    ${field({ id: "title", label: "Request title", value: v.title, required: true, wide: true, error: errors.title, attrs: 'maxlength="150" autofocus' })}
+    ${field({ id: "category", label: "Category", value: v.category, options: Object.keys(CATEGORIES), required: true, error: errors.category, attrs: 'data-action="form.category"' })}
+    ${field({ id: "sub", label: "Subcategory", value: v.sub, options: subs, required: true, error: errors.sub })}
+    ${field({ id: "dept", label: "Requesting department", value: v.dept, options: DEPARTMENTS, required: true, error: errors.dept })}
+    ${field({ id: "owner", label: "Responsible", value: v.owner, required: true, error: errors.owner, hint: "Who answers questions on this request" })}
+    ${field({ id: "request", label: "Request and justification", type: "textarea", value: v.request, required: true, wide: true, rows: 5, error: errors.request, hint: "What you ask the committee to decide, and why" })}
+    ${manpowerFields(v, errors)}
+    <p class="hint wide">Supporting slides or documents: email them to the secretaries; they attach them to the item when they accept it.</p>
+    <div class="form-actions wide">${btn("Cancel", "layer.close")}${btn(r ? "Resend request" : "Submit request", null, { kind: "primary", type: "submit" })}</div>
+  </form></div>`;
 }

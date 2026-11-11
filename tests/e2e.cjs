@@ -3,7 +3,7 @@
 const { chromium } = require("playwright");
 const http = require("http"), fs = require("fs"), path = require("path");
 const ROOT = path.resolve(__dirname, "..");
-const AXE = path.resolve(__dirname, require.resolve("axe-core/axe.min.js"));
+const AXE = path.resolve(__dirname, "../../e2e/node_modules/axe-core/axe.min.js");
 const seed = JSON.parse(fs.readFileSync(path.join(ROOT, "seed.json"), "utf8"));
 const types = { ".js": "text/javascript", ".css": "text/css", ".html": "text/html", ".json": "application/json" };
 const server = http.createServer((req, res) => {
@@ -110,6 +110,23 @@ const expect = (cond, msg) => { if (!cond) throw new Error(msg); };
       const saved = await page.evaluate(() => Object.values(window.__mockStore).filter(x => x && x.decision && x.decision.startsWith("Decision")).length);
       expect(saved === count, `saved ${saved} of ${count}`);
     });
+    await step("Structured outcome and positions approved are saved per item", async () => {
+      const n = await page.locator('select[data-action="minute.outcome"]').count();
+      for (let i = 0; i < n; i++) { await page.locator('select[data-action="minute.outcome"]').nth(i).selectOption(i === 1 ? "Deferred" : "Approved"); await page.waitForTimeout(150); }
+      const hc = page.locator('input[data-action="minute.hc"]').first(); await hc.fill("1"); await page.click("h1"); await page.waitForTimeout(250);
+      const got = await page.evaluate(() => Object.values(window.__mockStore).filter(x => x && x.meetingId && x.outcome && x.decision && x.decision.startsWith("Decision")).map(x => x.outcome));
+      expect(got.length === n && got.includes("Deferred"), `outcomes ${got}`);
+      expect(await page.evaluate(() => Object.values(window.__mockStore).some(x => x && x.hcApproved === 1 && x.decision?.startsWith("Decision"))), "hcApproved saved");
+    });
+    await step("Attendance is recorded and quorum shows only when set", async () => {
+      await page.click('[data-tab="attendance"]');
+      await page.waitForSelector('select[data-action="attendance.set"]');
+      expect((await page.textContent(".tabpanel, main")).includes("Quorum not set"), "no assumed quorum");
+      await page.locator('select[data-action="attendance.set"]').first().selectOption("Present"); await page.waitForTimeout(250);
+      const att = await page.evaluate(() => Object.values(window.__mockStore).find(v => v && v.title === "WPC Meeting, December").attendance);
+      expect(Object.values(att || {}).includes("Present"), `attendance ${JSON.stringify(att)}`);
+      await page.click('[data-tab="agenda"]');
+    });
     await step("Concurrent edit is detected and offers keep theirs / both / mine", async () => {
       const box = page.locator('textarea[data-field="discussion"]').first();
       await box.click();
@@ -151,6 +168,12 @@ const expect = (cond, msg) => { if (!cond) throw new Error(msg); };
       await page.click('[data-tab="agenda"]');
       await page.waitForSelector(".minutes-doc");
       expect((await page.textContent(".minutes-doc")).includes("v1"), "v1 doc");
+      expect((await page.textContent(".minutes-doc")).includes("Deferred"), "outcome in minutes document");
+    });
+    await step("Minutes download as a Word document", async () => {
+      await page.click('[data-action="minutes.download"]'); await page.waitForTimeout(200);
+      const f = await page.evaluate(() => window.__DOWNLOADS || []);
+      expect(f.some(x => x.endsWith(".doc")), `downloads ${f}`);
     });
     await step("Member requests a correction; secretary revises to v2", async () => {
       await page.click('[data-action="sig.correct"]');
@@ -186,6 +209,15 @@ const expect = (cond, msg) => { if (!cond) throw new Error(msg); };
       await page.click('.panel form[data-form="item.close"] [type="submit"]'); await page.waitForTimeout(400);
       expect((await page.textContent(".panel .obj-status")).includes("Closed"), "closed");
     });
+    await step("Secretary attaches a PDF to an item; unsupported types are refused with advice", async () => {
+      const inp = page.locator('.panel input[data-action="doc.upload"]').first();
+      await inp.setInputFiles({ name: "Potline presentation.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.4 test") });
+      await page.waitForTimeout(400);
+      expect((await page.textContent(".panel .docs")).includes("Potline presentation.pdf"), "doc listed");
+      await page.locator('.panel input[data-action="doc.upload"]').first().setInputFiles({ name: "slides.pptx", mimeType: "application/vnd.openxmlformats-officedocument.presentationml.presentation", buffer: Buffer.from("x") });
+      await page.waitForTimeout(300);
+      expect((await toastText()).includes("PDF"), `toast ${await toastText()}`);
+    });
     await step("Audit trail records the lifecycle", async () => {
       await page.goto("http://localhost:8765/test.html#records"); await page.waitForSelector("#tbl-audit");
       const txt = await page.textContent("#tbl-audit");
@@ -194,7 +226,7 @@ const expect = (cond, msg) => { if (!cond) throw new Error(msg); };
     await step("Export hands a JSON file to the viewer", async () => {
       await page.goto("http://localhost:8765/test.html#admin"); await page.waitForSelector('[data-action="data.export"]');
       await page.click('[data-action="data.export"]'); await page.click('[data-action="data.exportCsv"]'); await page.waitForTimeout(150);
-      const f = await page.evaluate(() => window.__DOWNLOADS || []);
+      const f = (await page.evaluate(() => window.__DOWNLOADS || [])).slice(-2);
       expect(f.length === 2 && f[0].endsWith(".json") && f[1].endsWith(".csv"), `downloads ${f}`);
     });
     await step("Refused write shows a permission message and changes nothing", async () => {
@@ -208,9 +240,37 @@ const expect = (cond, msg) => { if (!cond) throw new Error(msg); };
       await page.evaluate(() => { window.__FAIL_WRITES = false; });
       await page.keyboard.press("Escape");
     });
+    await step("Secretary accepts a department request into a referenced item", async () => {
+      await page.goto("http://localhost:8765/test.html#requests"); await page.waitForSelector("#tbl-requests");
+      await page.click('[data-action="request.accept"]');
+      await page.waitForSelector('.panel form[data-form="item.create"]');
+      expect(await page.inputValue(".panel #hcRequested") === "1", "facts carried over");
+      await page.click('.panel [type="submit"]'); await page.waitForTimeout(250);
+      if (await page.locator(".panel .msg.warn").count()) { await page.click('.panel [type="submit"]'); await page.waitForTimeout(250); }
+      expect(/WPC-2026-00\d/.test(await toastText()), `toast ${await toastText()}`);
+      await page.keyboard.press("Escape"); await page.waitForTimeout(150);
+      expect(await page.evaluate(() => Object.values(window.__mockStore).some(v => v && v.requestKey === "u_mem:r1")), "item linked to request");
+      await page.waitForTimeout(200);
+      expect((await page.textContent("#tbl-requests")).includes("Accepted"), "status Accepted");
+    });
+    await step("Requester (Contributor, not on roster) submits a request and sees only own requests", async () => {
+      const p2 = await browser.newPage({ viewport: { width: 1360, height: 900 } });
+      p2.on("pageerror", e => errors.push(e.message));
+      await p2.addInitScript(() => { window.__ME = { id: "u_req", name: "Dept Requester", editor: false, write: true }; });
+      await p2.goto("http://localhost:8765/test.html#requests"); await p2.waitForSelector('[data-action="request.new"]');
+      expect((await p2.textContent(".u-role")).includes("Requester"), "role Requester");
+      expect(!(await p2.textContent("main")).includes("Safety Officer"), "cannot see others' requests");
+      await p2.click('[data-action="request.new"]');
+      await p2.fill("#title", "Two lab analysts for night shift"); await p2.selectOption("#dept", "Quality"); await p2.fill("#owner", "Quality Manager");
+      await p2.fill("#request", "Two analysts for the new night shift sampling."); await p2.fill("#hcRequested", "2");
+      await p2.click('.panel [type="submit"]'); await p2.waitForTimeout(300);
+      const r = await p2.evaluate(() => window.__mockStore["requests/u_req"]);
+      expect(r && Object.values(r)[0].hcRequested === 2, `stored ${JSON.stringify(r)}`);
+      await p2.close();
+    });
 
     /* responsive + accessibility */
-    for (const [w, h, route] of [[390, 844, "dashboard"], [390, 844, "items"], [390, 844, "meetings"], [820, 1100, "dashboard"]]) {
+    for (const [w, h, route] of [[390, 844, "dashboard"], [390, 844, "items"], [390, 844, "meetings"], [390, 844, "requests"], [820, 1100, "dashboard"]]) {
       await step(`No horizontal page scroll at ${w}px on ${route}`, async () => {
         await page.setViewportSize({ width: w, height: h });
         await page.goto(`http://localhost:8765/test.html#${route}`); await page.waitForTimeout(400);
@@ -219,7 +279,7 @@ const expect = (cond, msg) => { if (!cond) throw new Error(msg); };
       });
     }
     await page.setViewportSize({ width: 1360, height: 900 });
-    for (const route of ["dashboard", "items", "meetings", "review", "records", "admin"]) {
+    for (const route of ["dashboard", "items", "meetings", "requests", "review", "records", "admin"]) {
       await step(`Accessibility (axe, WCAG 2 AA) on ${route}`, async () => {
         await page.goto(`http://localhost:8765/test.html#${route}`); await page.waitForTimeout(400);
         if (route === "meetings") { await page.click('[data-action="meeting.open"] >> nth=0').catch(() => {}); await page.waitForTimeout(200); }
