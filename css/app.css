@@ -877,6 +877,13 @@ main:focus, main:focus-visible { outline: none; }
 
 .grid td .btn + .btn { margin-left: 6px; }
 
+/* Demo banner (GitHub Pages demo only; never shown on claude.ai) */
+.demo-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-4); padding-block: 8px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); background: var(--warn-soft); color: var(--text); border-bottom: 1px solid var(--line); font-size: var(--fs-sm); }
+.demo-bar b { color: var(--warn); text-transform: uppercase; letter-spacing: .06em; font-size: var(--fs-xs); }
+.demo-bar span { flex: 1 1 260px; min-width: 0; }
+.demo-bar label { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
+.demo-bar button { font: inherit; padding: 4px 10px; border-radius: var(--radius); border: 1px solid var(--line-strong); background: var(--surface); color: var(--text); cursor: pointer; }
+
 /* 6. Responsive --------------------------------------------------------- */
 @media (max-width: 1080px) { .cols-2 { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 860px) {

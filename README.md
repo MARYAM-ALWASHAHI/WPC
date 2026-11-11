@@ -16,3 +16,9 @@ Live prototype: https://claude.ai/artifact/FDj8nmD2CoVFfa6XskrMkY (private; shar
 
 ## Data collections
 items, meetings, minutes (id = meetingId__itemId), actions, signatures (one doc per person), requests (one doc per requester, written only by them), intake (secretary decisions on requests), audit, config/roster (incl. quorum), counters/refs. File attachments use the assets capability (secretaries only; PDF, images, text).
+
+## Demo on GitHub Pages
+When the page runs on `*.github.io` (or with `?demo` in the URL), `js/demo-runtime.js` replaces the claude.ai runtime:
+fictional seed data, saved only in the visitor's browser, nothing shared between people, no file uploads.
+A banner says so and lets the presenter switch role (Secretary, Chairman, Member, Requester, Viewer) or reset the data.
+On claude.ai the file does nothing. Real committee work uses the claude.ai version.

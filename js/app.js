@@ -79,7 +79,7 @@ function renderShell(c) {
   u.innerHTML = state.session.me ? `<span class="avatar"><img src="${esc(state.session.me.avatarUrl)}" alt=""></span><span class="u-meta"><span class="u-name"></span><span class="u-role">${esc(c.role)}</span></span>` : "";
   const n = u.querySelector(".u-name"); if (n) n.textContent = state.session.me?.name || "You";
   const live = document.getElementById("live");
-  live.innerHTML = state.session.db ? `${icon("live")}<span>Live shared record</span>` : `${icon("alert")}<span>Not connected</span>`;
+  live.innerHTML = window.__WPC_DEMO ? `${icon("alert")}<span>Demo, this browser only</span>` : state.session.db ? `${icon("live")}<span>Live shared record</span>` : `${icon("alert")}<span>Not connected</span>`;
   live.className = `live ${state.session.db ? "on" : "off"}`;
 }
 
