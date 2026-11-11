@@ -2,142 +2,162 @@
  [
   "PASS",
   "Dashboard loads with live figures",
-  845
+  783
  ],
  [
   "PASS",
   "Dashboard drill-down opens the filtered item list",
-  143
+  84
  ],
  [
   "PASS",
   "Item list sorts and paginates",
-  231
+  119
  ],
  [
   "PASS",
   "New item: validation blocks an empty form",
-  142
+  121
  ],
  [
   "PASS",
   "New item: duplicate warning, then create anyway with a unique reference",
-  491
+  441
  ],
  [
   "PASS",
   "Roster: add committee member",
-  458
+  342
  ],
  [
   "PASS",
   "New meeting brings forward all open items and roster signers",
-  168
+  520
  ],
  [
   "PASS",
   "Workflow: issue agenda, start meeting",
-  608
+  505
  ],
  [
   "PASS",
   "Live minutes autosave on leaving the field",
-  1945
+  2726
  ],
  [
   "PASS",
   "Structured outcome and positions approved are saved per item",
-  1113
+  1118
  ],
  [
   "PASS",
   "Attendance is recorded and quorum shows only when set",
-  343
+  337
  ],
  [
   "PASS",
   "Concurrent edit is detected and offers keep theirs / both / mine",
-  522
+  394
  ],
  [
   "PASS",
   "Action validation rejects a past due date, then accepts a valid one",
-  1439
+  451
  ],
  [
   "PASS",
   "End meeting; circulation guard requires a signer",
-  474
+  460
  ],
  [
   "PASS",
   "Add signer and circulate v1 (frozen snapshot)",
-  631
+  654
+ ],
+ [
+  "PASS",
+  "Present mode shows one request per screen; meeting pack PDF downloads",
+  1800
  ],
  [
   "PASS",
   "Minutes download as a Word document",
-  239
+  231
  ],
  [
   "PASS",
   "Member requests a correction; secretary revises to v2",
-  812
+  779
  ],
  [
   "PASS",
   "Member signs v2; Chairman approves; secretary archives",
-  1281
+  1259
  ],
  [
   "PASS",
   "Signed minutes do not close the item; closure needs actions done and evidence",
-  3276
+  3116
  ],
  [
   "PASS",
   "Secretary attaches a PDF to an item; unsupported types are refused with advice",
-  743
+  738
  ],
  [
   "PASS",
   "Audit trail records the lifecycle",
-  21
+  23
+ ],
+ [
+  "PASS",
+  "Reports page summarises the period and downloads Word and CSV",
+  305
+ ],
+ [
+  "PASS",
+  "Email to members is prepared for the email app (no email is sent)",
+  135
+ ],
+ [
+  "PASS",
+  "Attendance sign-in link must be https and shows on the Attendance tab",
+  1525
  ],
  [
   "PASS",
   "Export hands a JSON file to the viewer",
-  431
+  235
  ],
  [
   "PASS",
   "Refused write shows a permission message and changes nothing",
-  5911
+  3861
  ],
  [
   "PASS",
   "Secretary accepts a department request into a referenced item",
-  6777
+  6708
  ],
  [
   "PASS",
   "Requester (Contributor, not on roster) submits a request and sees only own requests",
-  1009
+  1213
  ],
  [
   "PASS",
   "No horizontal page scroll at 390px on dashboard",
-  417
+  419
  ],
  [
   "PASS",
   "No horizontal page scroll at 390px on items",
-  408
+  407
  ],
  [
   "PASS",
   "No horizontal page scroll at 390px on meetings",
-  410
+  407
  ],
  [
   "PASS",
@@ -146,49 +166,59 @@
  ],
  [
   "PASS",
+  "No horizontal page scroll at 390px on reports",
+  406
+ ],
+ [
+  "PASS",
   "No horizontal page scroll at 820px on dashboard",
-  418
+  420
  ],
  [
   "PASS",
   "Accessibility (axe, WCAG 2 AA) on dashboard",
-  841
+  874
  ],
  [
   "PASS",
   "Accessibility (axe, WCAG 2 AA) on items",
-  729
+  882
  ],
  [
   "PASS",
   "Accessibility (axe, WCAG 2 AA) on meetings",
-  881
+  1153
  ],
  [
   "PASS",
   "Accessibility (axe, WCAG 2 AA) on requests",
-  632
+  748
  ],
  [
   "PASS",
   "Accessibility (axe, WCAG 2 AA) on review",
-  615
- ],
- [
-  "PASS",
-  "Accessibility (axe, WCAG 2 AA) on records",
   742
  ],
  [
   "PASS",
+  "Accessibility (axe, WCAG 2 AA) on records",
+  951
+ ],
+ [
+  "PASS",
+  "Accessibility (axe, WCAG 2 AA) on reports",
+  940
+ ],
+ [
+  "PASS",
   "Accessibility (axe, WCAG 2 AA) on admin",
-  716
+  853
  ],
  [
   "PASS",
   "Performance: dashboard renders 300 items under 300 ms",
-  51,
-  "22 ms"
+  39,
+  "15 ms"
  ],
  [
   "PASS",

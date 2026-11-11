@@ -24,6 +24,8 @@ function actionBadge(a, today) {
   return badge(ACTION_LABELS[a.status] || "Open", a.status === "IN_PROGRESS" ? "info" : "neutral");
 }
 const fileUrl = id => "/_blob/" + id;
+export const safeUrl = u => (typeof u === "string" && /^https:\/\/[^\s"'<>]+$/i.test(u.trim()) ? u.trim() : "");
+const hostOf = u => { try { return new URL(u).hostname; } catch (_) { return ""; } };
 const fmtSize = n => n > 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`;
 const fmtOMR = n => n == null || n === "" ? "—" : `OMR ${Number(n).toLocaleString("en-GB")}`;
 /** Compact manpower facts line for cards and tables. */
@@ -184,6 +186,7 @@ export function itemPanel(ctx, it) {
   return `${panelHead(it.title, `<span class="ref">${esc(it.ref)}</span> · ${esc(it.category)} · ${esc(it.sub || "")}`)}
   <div class="panel-body">
     <div class="obj-status">${badge(stage)}${it.archived ? badge("Archived", "neutral") : ""}
+      ${btn("Request sheet (PDF)", "pdf.item", { ic: "download", data: { id: it.id } })}
       ${sec && !it.archived ? `<span class="spacer"></span>${btn("Edit", "item.edit", { ic: "edit", data: { id: it.id } })}${isItemOpen(it) ? btn("Withdraw", "item.withdraw", { data: { id: it.id } }) : btn("Reopen", "item.reopen", { data: { id: it.id } })}${!isItemOpen(it) ? btn("Archive", "item.archive", { ic: "archive", data: { id: it.id } }) : ""}` : ""}
       ${sec && it.archived ? `<span class="spacer"></span>${btn("Restore from archive", "item.unarchive", { data: { id: it.id } })}` : ""}
     </div>
@@ -302,6 +305,8 @@ export function meetingDetail(ctx, m) {
     if (m.status !== "archived") transitions.unshift(btn("Edit details", "meeting.edit", { ic: "edit", data: { id: m.id } }));
   }
   if (ctx.s.downloads && agenda.length) transitions.unshift(btn(m.snapshot ? `Download minutes v${m.version} (Word)` : "Download draft (Word)", "minutes.download", { ic: "download", data: { id: m.id } }));
+  if (sec && agenda.length && m.status !== "archived") transitions.unshift(btn("Email members", "email.members", { ic: "mail", data: { id: m.id } }));
+  if (agenda.length) transitions.unshift(btn("Present", "present.open", { ic: "present", data: { id: m.id } }));
   const q = quorumState(m, ctx.d.roster.quorum);
   const tabs = [["agenda", `Agenda and minutes (${agenda.length})`], ["attendance", `Attendance (${q.present})`], ["signatures", "Signatures"], ["versions", `Versions (${m.versions.length})`], ["log", "Change log"]];
   return `${pageHeader({ crumbs: [{ label: "Meetings", href: "#meetings", action: "meeting.back" }, { label: m.title }], title: m.title,
@@ -337,7 +342,9 @@ function attendanceTab(ctx, m, q) {
   const people = attendees(ctx, m);
   const edit = ctx.role === "Secretary" && !["circulated", "archived"].includes(m.status);
   const att = m.attendance || {};
+  const link = safeUrl(m.attendanceLink);
   return `<section class="card"><div class="card-h"><h2>Attendance</h2><span class="hint">${q.required ? `Quorum: ${q.required} present. ${q.met ? "Met." : "Not met."}` : "Quorum not set. A secretary can set it under Users and permissions."}</span></div>
+    <div class="sign-in-link">${link ? `<a class="btn" href="${esc(link)}" target="_blank" rel="noopener">${icon("sign")}Open attendance sign-in sheet</a><span class="hint">${esc(hostOf(link))}. Opens outside WPC Hub. Check who signed there, then record attendance below.</span>` : `<span class="hint">No sign-in link yet. ${ctx.role === "Secretary" ? "Paste the DocuSign (or other) attendance link under Edit details." : ""}</span>`}</div>
     ${people.length ? `<div class="table-scroll"><table class="grid compact"><thead><tr><th scope="col">Name</th><th scope="col">Committee role</th><th scope="col">Attendance</th></tr></thead><tbody>${people.map(u => `<tr><td>${person(ctx, u)}</td><td>${u === (m.chairman || ctx.d.roster.chairman) ? "Chairman" : "Member"}</td><td>${edit ? `<select class="inline-select" data-action="attendance.set" data-id="${esc(m.id)}" data-user="${esc(u)}" aria-label="Attendance of ${esc(ctx.name(u))}"><option value="">Not recorded</option>${ATTENDANCE.map(a => `<option ${att[u] === a ? "selected" : ""}>${a}</option>`).join("")}</select>` : att[u] ? badge(att[u], att[u] === "Present" ? "ok" : att[u] === "Absent" ? "bad" : "neutral") : "—"}</td></tr>`).join("")}</tbody></table></div>` : `<p class="empty">No committee people yet. Add the roster under Users and permissions, or signers under Signatures.</p>`}
     ${edit ? `<p class="hint">Attendance is part of the minutes and is frozen with each circulated version.</p>` : ""}
   </section>`;
@@ -360,7 +367,34 @@ function agendaTab(ctx, m, agenda) {
       ${candidates.length ? btn(`Bring forward all ${candidates.length} open items`, "agenda.bringAll", { data: { id: m.id } }) : ""}
       ${btn("New item on this agenda", "item.new", { ic: "plus", data: { meeting: m.id } })}
     </div>` : ""}
-  ${agenda.length ? agenda.map((it, i) => minuteBlock(ctx, m, it, i + 1, editAgenda, editMin)).join("") : `<div class="card"><p class="empty">The agenda is empty.${editAgenda ? " Add open items or create a new one." : ""}</p></div>`}`;
+  ${agenda.length ? agendaWorkspace(ctx, m, agenda, editAgenda, editMin) : `<div class="card"><p class="empty">The agenda is empty.${editAgenda ? " Add open items or create a new one." : ""}</p></div>`}`;
+}
+
+/** One item at a time: a numbered rail on the left, the selected item on the right. "All items" keeps the long view. */
+function agendaWorkspace(ctx, m, agenda, editAgenda, editMin) {
+  const mode = ctx.ui.agendaMode || "one";
+  const showMin = m.status !== "preparation" && m.status !== "agenda_issued";
+  const mnOf = it => ctx.d.minutes[`${m.id}__${it.id}`] || {};
+  const done = agenda.filter(it => mnOf(it).outcome).length;
+  ctx.ui.agendaFocus = ctx.ui.agendaFocus || {};
+  if (!agenda.some(it => it.id === ctx.ui.agendaFocus[m.id])) ctx.ui.agendaFocus[m.id] = (agenda.find(it => showMin && !mnOf(it).outcome) || agenda[0]).id;
+  const idx = agenda.findIndex(it => it.id === ctx.ui.agendaFocus[m.id]);
+  const switcher = `<div class="seg" role="group" aria-label="Agenda view">${[["one", "One item at a time"], ["all", "All items"]].map(([k, l]) => `<button type="button" class="seg-b ${mode === k ? "on" : ""}" aria-pressed="${mode === k}" data-action="agenda.mode" data-mode="${k}">${l}</button>`).join("")}</div>`;
+  if (mode === "all") return `<div class="agenda-top">${switcher}${showMin ? `<span class="hint">${done} of ${agenda.length} items have an outcome</span>` : ""}</div>${agenda.map((it, i) => minuteBlock(ctx, m, it, i + 1, editAgenda, editMin)).join("")}`;
+  const it = agenda[idx];
+  const rail = `<nav class="agenda-rail" aria-label="Agenda items">
+    <div class="rail-h"><b>Agenda</b>${showMin ? `<span class="rail-prog" aria-label="${done} of ${agenda.length} decided"><span style="width:${Math.round(100 * done / agenda.length)}%"></span></span><span class="hint">${done}/${agenda.length} decided</span>` : `<span class="hint">${agenda.length} items</span>`}</div>
+    <ol>${agenda.map((x, i) => { const o = mnOf(x).outcome; return `<li><button type="button" class="rail-item ${i === idx ? "on" : ""}" ${i === idx ? 'aria-current="true"' : ""} data-action="agenda.focus" data-id="${esc(m.id)}" data-item="${esc(x.id)}">
+      <span class="rail-n ${o ? "done" : ""}">${o ? icon("actions") : i + 1}</span>
+      <span class="rail-t"><span class="ref">${esc(x.ref)}</span><span class="rail-title">${esc(x.title)}</span>${showMin ? `<span class="rail-o">${o ? esc(o) : "Outcome to record"}</span>` : `<span class="rail-o">${esc(x.dept)}</span>`}</span>
+    </button></li>`; }).join("")}</ol></nav>`;
+  const pager = `<div class="item-pager">
+    ${btn("Previous item", "agenda.step", { ic: "back", data: { id: m.id, dir: -1 }, disabled: idx === 0 })}
+    <span class="hint">Item ${idx + 1} of ${agenda.length}</span>
+    ${btn(idx === agenda.length - 1 ? "Last item" : "Next item", "agenda.step", { kind: idx === agenda.length - 1 ? "secondary" : "primary", data: { id: m.id, dir: 1 }, disabled: idx === agenda.length - 1 })}
+  </div>`;
+  return `<div class="agenda-top">${switcher}<span class="hint">Use the list to move between items. Everything you type is saved when you leave a field.</span></div>
+  <div class="agenda-ws">${rail}<div class="agenda-focus">${minuteBlock(ctx, m, it, idx + 1, editAgenda, editMin)}${pager}</div></div>`;
 }
 
 function minuteBlock(ctx, m, it, n, editAgenda, editMin) {
@@ -458,6 +492,7 @@ export function meetingForm(ctx, m, { errors = {}, values = null } = {}) {
     ${field({ id: "date", label: "Meeting date", type: "date", value: v.date, required: true, error: errors.date })}
     ${field({ id: "time", label: "Start time", type: "time", value: v.time || "" })}
     ${field({ id: "location", label: "Location", value: v.location || "", attrs: 'maxlength="80"', hint: "Room, or Teams" })}
+    ${field({ id: "attendanceLink", label: "Attendance sign-in link (DocuSign or other)", type: "url", value: v.attendanceLink || "", wide: true, error: errors.attendanceLink, hint: "Paste the envelope or sign-in sheet link, starting with https://. WPC Hub links to it; it does not read signatures from DocuSign.", attrs: 'maxlength="500" placeholder="https://"' })}
     ${field({ id: "chairman", label: "Chairman (final approval)", value: v.chairman || roster.chairman || "", options: memberOpts, hint: "People come from the committee roster under Administration." })}
     ${!m ? `<label class="chk wide"><input type="checkbox" name="bring" ${openCount ? "checked" : "disabled"}> Bring forward all ${openCount} open items</label>
     <label class="chk wide"><input type="checkbox" name="roster" checked> Add the ${(roster.members || []).length} roster members as signers</label>` : ""}

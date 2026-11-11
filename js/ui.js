@@ -43,6 +43,10 @@ const P = {
   sort: "M8 2l3 4H5zM8 14l3-4H5z",
   info: "M8 14.5A6.5 6.5 0 1 0 8 1.5a6.5 6.5 0 0 0 0 13zM8 7v4.5M8 4.8h.01",
   inbox: "M2 9h3.5l1 2h3l1-2H14M2 9l2-6h8l2 6v4H2z",
+  mail: "M2 4h12v8H2zM2 4l6 5 6-5",
+  present: "M2 3h12v8H2zM8 11v3M5 14h6M6 6l3 1.5L6 9z",
+  report: "M4 2h6l3 3v9H4zM10 2v3h3M6 8h5M6 10.5h5M6 13h3",
+  next: "M6 4l4 4-4 4",
   live: "M8 9.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM4.5 4.5a5 5 0 0 0 0 7M11.5 4.5a5 5 0 0 1 0 7",
 };
 export const icon = (name, label) =>

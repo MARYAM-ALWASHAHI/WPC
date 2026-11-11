@@ -276,6 +276,7 @@ export function validateMeeting(v) {
   const e = {};
   if (!v.title || v.title.trim().length < 3) e.title = "Enter a meeting title.";
   if (!v.date || !/^\d{4}-\d{2}-\d{2}$/.test(v.date)) e.date = "Choose the meeting date.";
+  if (v.attendanceLink && !/^https:\/\/[^\s"'<>]+$/i.test(v.attendanceLink.trim())) e.attendanceLink = "Enter a full link that starts with https://";
   return e;
 }
 export function validateClosure(v, item, actions, today) {

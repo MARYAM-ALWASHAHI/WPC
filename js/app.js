@@ -6,19 +6,22 @@ import * as D from "./domain.js";
 import { state, connect, onChange, saveDoc, nextRef, newId, audit, writeSignature, writeRequest, uploadFile, errorMessage, setPresence, WriteError } from "./store.js";
 import { esc, icon, toast, openPanel, closePanel, panelOpen, confirmDialog, readForm, msg, btn, panelHead } from "./ui.js";
 import * as V from "./views.js";
+import * as R from "./reports.js";
+import { presentHTML, buildPdf } from "./present.js";
 
 /* ---------- UI state (per viewer, not shared) ---------- */
 const TABLE = (sort, dir = "asc") => ({ sort, dir, page: 1, size: 25 });
 const ITEM_FILTER = () => ({ q: "", status: "open", cat: "", dept: "", stage: "", owner: "", month: "", pending: false, overdue: false, archived: false });
 const ui = {
   route: "dashboard", meetingId: null, meetingTab: "agenda", openItem: null,
+  agendaMode: "one", agendaFocus: {}, present: null, report: R.quickPeriod("year", D.isoToday()),
   itemFilter: ITEM_FILTER(),
   actionFilter: { status: "active", owner: "", overdue: false },
   auditFilter: { q: "", entity: "" },
   tables: { items: TABLE("ref", "desc"), meetings: TABLE("date", "desc"), actions: TABLE("due"), audit: TABLE("at", "desc"), requests: TABLE("submittedAt", "desc") },
 };
-const ROUTES = { dashboard: V.dashboard, requests: V.requestsView, meetings: null, items: V.itemsView, actions: V.actionsView, review: V.reviewView, records: V.recordsView, admin: V.adminView };
-const NAV = [["dashboard", "Overview", "dashboard"], ["requests", "Requests", "inbox"], ["meetings", "Meetings", "meeting"], ["items", "Agenda items", "items"], ["actions", "Actions", "actions"], ["review", "Review and signatures", "sign"], ["records", "Historical records", "history"], ["admin", "Users and permissions", "users"]];
+const ROUTES = { dashboard: V.dashboard, requests: V.requestsView, meetings: null, items: V.itemsView, actions: V.actionsView, review: V.reviewView, records: V.recordsView, reports: R.reportsView, admin: V.adminView };
+const NAV = [["dashboard", "Overview", "dashboard"], ["requests", "Requests", "inbox"], ["meetings", "Meetings", "meeting"], ["items", "Agenda items", "items"], ["actions", "Actions", "actions"], ["review", "Review and signatures", "sign"], ["records", "Historical records", "history"], ["reports", "Reports", "report"], ["admin", "Users and permissions", "users"]];
 
 /* ---------- names ---------- */
 const names = {};
@@ -68,6 +71,7 @@ function render() {
     main.innerHTML = html;
   }
   window.scrollTo(0, y);
+  if (ui.present) renderPresent();
   if (ui.openItem && panelOpen() && document.querySelector('.panel[data-kind="item"]')) refreshItemPanel();
 }
 const loading = text => `<div class="loading" role="status"><span class="spinner" aria-hidden="true"></span>${esc(text)}</div>`;
@@ -370,7 +374,7 @@ const FORMS = {
       const ref = await nextRef("meeting"); const id = newId();
       const agenda = v.bring ? Object.values(state.data.items).filter(i => D.isItemOpen(i) && !i.archived).map(i => i.id) : [];
       const members = v.roster ? [...(state.data.roster.members || [])] : [];
-      await saveDoc("meetings", id, { id, ref, title: v.title, date: v.date, time: v.time || "", location: v.location || "", attendance: {}, chairman: v.chairman || null, status: "preparation", version: 0, agenda, members, versions: [], createdAt: new Date().toISOString(), createdBy: state.session.myId }, { create: true });
+      await saveDoc("meetings", id, { id, ref, title: v.title, date: v.date, time: v.time || "", location: v.location || "", attendanceLink: V.safeUrl(v.attendanceLink), attendance: {}, chairman: v.chairman || null, status: "preparation", version: 0, agenda, members, versions: [], createdAt: new Date().toISOString(), createdBy: state.session.myId }, { create: true });
       audit("meeting", id, "Created", `${agenda.length} items brought forward`, ref);
       closePanel(); ui.meetingId = id; ui.meetingTab = "agenda"; go("meetings"); toast(`${ref} created`, "ok");
     });
@@ -379,7 +383,7 @@ const FORMS = {
     const m = state.data.meetings[form.dataset.id];
     const errors = D.validateMeeting(v);
     if (Object.keys(errors).length) return openPanel(V.meetingForm(ctx(), m, { errors, values: v }), "Edit meeting");
-    if (await run(() => saveDoc("meetings", m.id, { title: v.title, date: v.date, time: v.time || "", location: v.location || "", chairman: v.chairman || null }, { baseRev: +form.dataset.rev }), "Meeting saved")) { audit("meeting", m.id, "Edited details", "", m.ref); closePanel(); }
+    if (await run(() => saveDoc("meetings", m.id, { title: v.title, date: v.date, time: v.time || "", location: v.location || "", attendanceLink: V.safeUrl(v.attendanceLink), chairman: v.chairman || null }, { baseRev: +form.dataset.rev }), "Meeting saved")) { audit("meeting", m.id, "Edited details", "", m.ref); closePanel(); }
   },
   "action.create": async (form, v) => {
     const errBox = form.querySelector("[data-err]");
@@ -480,6 +484,10 @@ document.addEventListener("click", e => {
   cmd(el, e);
 });
 document.addEventListener("keydown", e => {
+  if (ui.present && !document.getElementById("dialog").innerHTML) {
+    if (e.key === "Escape") { e.preventDefault(); return COMMANDS["present.close"](); }
+    if (e.key === "ArrowRight" || e.key === "ArrowLeft") { e.preventDefault(); return stepPresent(e.key === "ArrowRight" ? 1 : -1); }
+  }
   if (e.key === "Escape" && panelOpen() && !document.getElementById("dialog").innerHTML) { closePanel(); ui.openItem = null; }
   if (e.key === "Enter" && e.target.matches("tr[data-action]")) { e.preventDefault(); e.target.click(); }
 });
@@ -489,6 +497,7 @@ document.addEventListener("change", async e => {
   if (a === "filter.items") { ui.itemFilter[el.dataset.key] = el.type === "checkbox" ? el.checked : el.value; ui.tables.items.page = 1; render(); }
   else if (a === "filter.actions") { ui.actionFilter[el.dataset.key] = el.type === "checkbox" ? el.checked : el.value; ui.tables.actions.page = 1; render(); }
   else if (a === "filter.audit") { ui.auditFilter[el.dataset.key] = el.value; ui.tables.audit.page = 1; render(); }
+  else if (a === "filter.report") { if (/^\d{4}-\d{2}-\d{2}$/.test(el.value)) { ui.report[el.dataset.key] = el.value; if (ui.report.from > ui.report.to) toast("The start date is after the end date.", "error"); render(); } }
   else if (a === "table.size") { const t = ui.tables[el.dataset.table]; t.size = +el.value; t.page = 1; render(); }
   else if (a === "form.category") { const sub = el.form.querySelector('[name="sub"]'); sub.innerHTML = D.CATEGORIES[el.value].map(s => `<option>${esc(s)}</option>`).join(""); }
   else if (a === "minute.outcome") { await saveMinuteField(el.dataset.minute, "outcome", el.value, "Outcome recorded"); }
@@ -558,3 +567,119 @@ connect().catch(err => { console.error(err); state.session.ready = true; state.e
 
 /* Exposed for the end-to-end test harness only. */
 window.__wpc = { state, ui, D };
+
+
+/* ====================================================================== */
+/* Agenda focus, presenting, PDF, email to members, reports              */
+/* ====================================================================== */
+const agendaOf = m => m.agenda.map(id => state.data.items[id]).filter(Boolean);
+Object.assign(COMMANDS, {
+  "agenda.mode": el => { ui.agendaMode = el.dataset.mode; render(); },
+  "agenda.focus": el => { ui.agendaFocus[el.dataset.id] = el.dataset.item; render(); document.querySelector(".agenda-focus")?.scrollIntoView({ block: "start", behavior: "smooth" }); },
+  "agenda.step": el => {
+    const m = state.data.meetings[el.dataset.id]; const a = agendaOf(m);
+    const i = Math.max(0, Math.min(a.length - 1, a.findIndex(x => x.id === ui.agendaFocus[m.id]) + Number(el.dataset.dir)));
+    ui.agendaFocus[m.id] = a[i].id; render();
+    document.querySelector(".agenda-focus")?.scrollIntoView({ block: "start", behavior: "smooth" });
+  },
+  "present.open": el => {
+    const m = state.data.meetings[el.dataset.id]; const a = agendaOf(m);
+    const i = Math.max(0, a.findIndex(x => x.id === ui.agendaFocus[m.id]));
+    ui.present = { meetingId: m.id, i }; renderPresent();
+  },
+  "present.close": () => { ui.present = null; document.getElementById("present")?.remove(); document.body.classList.remove("presenting"); },
+  "present.step": el => stepPresent(Number(el.dataset.dir)),
+  "pdf.pack": async el => {
+    const m = state.data.meetings[el.dataset.id];
+    await savePdf(() => buildPdf({ ctx: ctx(), meeting: m, items: agendaOf(m) }), `${m.ref}-meeting-pack.pdf`, () => audit("meeting", m.id, "Downloaded meeting pack (PDF)", `${m.agenda.length} items`, m.ref));
+  },
+  "pdf.item": async el => {
+    const it = state.data.items[el.dataset.id];
+    await savePdf(() => buildPdf({ ctx: ctx(), items: [it] }), `${it.ref}-request.pdf`, () => audit("item", it.id, "Downloaded request sheet (PDF)", "", it.ref));
+  },
+  "email.members": async el => openEmail(state.data.meetings[el.dataset.id]),
+  "email.copy": async el => {
+    const f = document.querySelector('.panel form[data-form="email.noop"]');
+    const text = el.dataset.part === "to" ? f.to.value : `Subject: ${f.subject.value}\n\n${f.body.value}`;
+    try { await navigator.clipboard.writeText(text); toast(el.dataset.part === "to" ? "Addresses copied" : "Email copied. Paste it into Outlook.", "ok"); }
+    catch (_) { const t = el.dataset.part === "to" ? f.to : f.body; t.focus(); t.select(); toast("Copy was blocked. The text is selected: press Ctrl+C.", "error"); }
+    const m = state.data.meetings[f.dataset.id]; audit("meeting", m.id, "Prepared email to members", f.subject.value, m.ref);
+  },
+  "report.quick": el => { ui.report = R.quickPeriod(el.dataset.period, D.isoToday()); render(); },
+  "report.word": async () => { const f = R.reportWord(ctx()); await saveFile(f.filename, f.data); },
+  "report.csv": async el => { const f = R.reportCsv(ctx(), el.dataset.kind); await saveFile(f.filename, f.data); },
+});
+FORMS["email.noop"] = async () => {};
+FORMS["report.period"] = async () => {};
+
+function stepPresent(dir) {
+  if (!ui.present) return;
+  const m = state.data.meetings[ui.present.meetingId]; const n = agendaOf(m).length;
+  ui.present.i = Math.max(0, Math.min(n - 1, ui.present.i + dir)); renderPresent();
+}
+function renderPresent() {
+  const m = ui.present && state.data.meetings[ui.present.meetingId];
+  if (!m) return COMMANDS["present.close"]();
+  let host = document.getElementById("present");
+  if (!host) { host = document.createElement("div"); host.id = "present"; document.body.appendChild(host); }
+  ui.present.i = Math.min(ui.present.i, Math.max(0, agendaOf(m).length - 1));
+  host.innerHTML = presentHTML(ctx(), m, ui.present.i);
+  document.body.classList.add("presenting");
+  host.querySelector(".pr-slide")?.focus({ preventScroll: true });
+}
+async function saveFile(filename, data) {
+  const dl = state.session.downloads;
+  if (!dl) return toast("Downloads are not available here.", "error");
+  try { await dl.save({ filename, data }); return true; }
+  catch (e) { if (e?.code !== "dismissed" && e?.code !== "declined") toast("The file was not saved.", "error"); return false; }
+}
+async function savePdf(build, filename, after) {
+  toast("Preparing the PDF…");
+  let blob;
+  try { blob = await build(); } catch (e) { return toast(`PDF could not be made: ${e.message || "library not loaded"}. Check your connection and try again.`, "error"); }
+  if (await saveFile(filename, blob)) after?.();
+}
+async function openEmail(m) {
+  if (!requireSecretary()) return;
+  const people = [...new Set([m.chairman, state.data.roster.chairman, ...(state.data.roster.members || []), ...m.members].filter(Boolean))];
+  let emails = {};
+  try { const ps = await state.session.user.profiles(people); for (const u of people) if (ps[u]?.email) emails[u] = ps[u].email; } catch (_) {}
+  const missing = people.filter(u => !emails[u]).map(u => name(u));
+  const items = agendaOf(m);
+  const fx = it => [it.hcRequested ? `${it.hcRequested} position(s)` : "", it.budgeted || ""].filter(Boolean).join(", ");
+  const subject = `WPC ${m.ref}: items for the meeting on ${m.date ? new Date(m.date + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }) : ""}`;
+  const body = `Dear Committee Members,
+
+The following ${items.length} item${items.length === 1 ? " has" : "s have"} been accepted for the Workforce Planning Committee meeting:
+
+Meeting: ${m.title}
+Date: ${m.date}${m.time ? ` at ${m.time}` : ""}${m.location ? `\nLocation: ${m.location}` : ""}
+
+${items.map((it, i) => `${i + 1}. ${it.ref} – ${it.title}\n   ${it.dept}${fx(it) ? ` · ${fx(it)}` : ""}`).join("\n")}
+
+Please review the requests in WPC Hub before the meeting.${V.safeUrl(m.attendanceLink) ? `\n\nAttendance sign-in: ${V.safeUrl(m.attendanceLink)}` : ""}
+
+Regards,
+${state.session.me?.name || "WPC Secretary"}`;
+  const to = Object.values(emails).join("; ");
+  const mailto = `mailto:${encodeURIComponent(Object.values(emails).join(","))}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  openPanel(`${panelHead("Email committee members", `${esc(m.ref)} · ${items.length} accepted items`)}
+  <div class="panel-body">
+    ${msg("info", "WPC Hub does not send email itself. Open this in your email app, or copy it into Outlook. You can edit everything below first.")}
+    ${missing.length ? msg("warn", `No email address available for: ${esc(missing.join(", "))}. Add them in Outlook.`) : ""}
+    <form class="form" data-form="email.noop" data-id="${esc(m.id)}" novalidate>
+      <div class="field wide"><label for="em-to">To</label><textarea id="em-to" name="to" rows="2">${esc(to)}</textarea></div>
+      <div class="field wide"><label for="em-subject">Subject</label><input id="em-subject" name="subject" value="${esc(subject)}"></div>
+      <div class="field wide"><label for="em-body">Message</label><textarea id="em-body" name="body" rows="14">${esc(body)}</textarea></div>
+      <div class="form-actions wide">
+        ${btn("Copy addresses", "email.copy", { data: { part: "to" } })}
+        ${btn("Copy email", "email.copy", { data: { part: "body" } })}
+        <a class="btn primary" id="em-open" href="${esc(mailto)}" target="_blank" rel="noopener">${icon("mail")}Open in email app</a>
+      </div>
+      <p class="hint wide">If “Open in email app” does nothing on your device, use Copy email and paste it into Outlook.</p>
+    </form>
+  </div>`, "Email committee members");
+  const f = document.querySelector('.panel form[data-form="email.noop"]');
+  const sync = () => { document.getElementById("em-open").href = `mailto:${encodeURIComponent(f.to.value.split(/[;,\s]+/).filter(Boolean).join(","))}?subject=${encodeURIComponent(f.subject.value)}&body=${encodeURIComponent(f.body.value)}`; };
+  f.addEventListener("input", sync);
+}

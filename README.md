@@ -10,7 +10,7 @@ Live prototype: https://claude.ai/artifact/FDj8nmD2CoVFfa6XskrMkY (private; shar
 - js/ui.js — reusable components: data table, fields, badges, panels, dialogs, toasts, icons
 - js/views.js — one render function per module
 - js/app.js — routing, UI state, commands, forms, minutes autosave + conflict dialog
-- tests/domain.test.mjs — unit tests (18): `node --test tests/domain.test.mjs`
+- tests/domain.test.mjs — unit tests (20): `node --test tests/domain.test.mjs`
 - tests/e2e.cjs + tests/mock-runtime.js — end-to-end, responsive, accessibility (needs Playwright + axe-core)
 - seed.json — the fictional example records
 
@@ -22,3 +22,11 @@ When the page runs on `*.github.io` (or with `?demo` in the URL), `js/demo-runti
 fictional seed data, saved only in the visitor's browser, nothing shared between people, no file uploads.
 A banner says so and lets the presenter switch role (Secretary, Chairman, Member, Requester, Viewer) or reset the data.
 On claude.ai the file does nothing. Real committee work uses the claude.ai version.
+
+## v4 (Nov 2026)
+- New light design (Plus Jakarta Sans headings, Inter text).
+- Minutes: one agenda item at a time with a numbered rail, or "All items".
+- Present mode: one request per screen for the committee; meeting pack and single request sheet as PDF (jsPDF 2.5.1 from cdnjs, loaded on demand).
+- "Email members": prepares the email with the accepted items for the viewer's email app or clipboard. WPC Hub does not send email.
+- Attendance sign-in link (e.g. DocuSign) per meeting, https only. WPC Hub links to it; it does not read signatures from DocuSign.
+- Reports page (js/reports.js): period summary, decision log, meetings, follow-up by responsible, activity log; Word and CSV downloads.

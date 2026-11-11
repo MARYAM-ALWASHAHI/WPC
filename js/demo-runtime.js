@@ -8,11 +8,11 @@
 
   const KEY = "wpc-hub-demo-v1", ROLE_KEY = "wpc-hub-demo-role";
   const PEOPLE = [
-    { id: "u_sec", name: "Demo Secretary" },
-    { id: "u_chair", name: "Demo Chairman" },
-    { id: "u_mem", name: "Demo Member" },
-    { id: "u_req", name: "Demo Requester (Carbon)" },
-    { id: "u_view", name: "Demo Viewer" },
+    { id: "u_sec", email: "demo.secretary@example.com", name: "Demo Secretary" },
+    { id: "u_chair", email: "demo.chairman@example.com", name: "Demo Chairman" },
+    { id: "u_mem", email: "demo.member@example.com", name: "Demo Member" },
+    { id: "u_req", email: "demo.requester@example.com", name: "Demo Requester (Carbon)" },
+    { id: "u_view", email: "demo.viewer@example.com", name: "Demo Viewer" },
   ];
   const ROLES = {
     Secretary: { id: "u_sec", editor: true, write: true },
@@ -74,7 +74,7 @@
     me: async () => ({ id: ME.id, name: ME.name, avatarUrl: avatar, isOwner: ME.editor, canEdit: ME.editor }),
     canEdit: async () => ME.editor,
     can: name => (name === "data.write" ? ME.write : null),
-    profiles: async ids => Object.fromEntries([].concat(ids).map(i => [i, { id: i, name: (PEOPLE.find(p => p.id === i) || {}).name || "" }])),
+    profiles: async ids => Object.fromEntries([].concat(ids).map(i => [i, { id: i, name: (PEOPLE.find(p => p.id === i) || {}).name || "", email: (PEOPLE.find(p => p.id === i) || {}).email || null }])),
     search: async q => PEOPLE.filter(p => !q || p.name.toLowerCase().includes(q.toLowerCase())).map(p => ({ ...p, avatarUrl: avatar })),
   };
   const downloads = {

@@ -175,3 +175,24 @@ test("a Contributor outside the roster is a Requester", () => {
   assert.equal(D.roleOf("z", false, { members: [] }, true), "Requester");
   assert.equal(D.roleOf("z", false, { members: [] }, null), "Viewer");
 });
+
+test("attendance sign-in link must be a full https link", () => {
+  const base = { title: "WPC Meeting", date: "2026-11-20" };
+  assert.ok(D.validateMeeting({ ...base, attendanceLink: "javascript:alert(1)" }).attendanceLink);
+  assert.ok(D.validateMeeting({ ...base, attendanceLink: "http://example.com" }).attendanceLink);
+  assert.equal(D.validateMeeting({ ...base, attendanceLink: "https://demo.docusign.net/x" }).attendanceLink, undefined);
+  assert.equal(D.validateMeeting(base).attendanceLink, undefined);
+});
+
+test("report period shortcuts and decision log", async () => {
+  const R = await import("../js/reports.js");
+  assert.deepEqual(R.quickPeriod("quarter", "2026-11-11"), { from: "2026-10-01", to: "2026-11-11" });
+  assert.deepEqual(R.quickPeriod("month", "2026-11-11"), { from: "2026-11-01", to: "2026-11-11" });
+  const ctx = { today: "2026-11-11", name: () => "X", ui: { report: { from: "2026-10-01", to: "2026-11-11" } },
+    d: { items: { i1: { id: "i1", ref: "WPC-2026-001", title: "T", dept: "HR", category: "Other", status: "OPEN", createdAt: "2026-10-01", hcRequested: 2 } },
+      meetings: { m1: { id: "m1", ref: "M-1", date: "2026-10-20", agenda: ["i1"], attendance: {}, status: "archived", version: 1 } },
+      minutes: { m1__i1: { outcome: "Approved", hcApproved: 2, decision: "Approved." } }, actions: {}, audit: {}, requests: {} } };
+  const r = R.reportData(ctx, "2026-10-01", "2026-11-11");
+  assert.equal(r.decisions.length, 1); assert.equal(r.hcApproved, 2); assert.equal(r.avgCycle, 19);
+  assert.match(R.reportCsv(ctx, "decisions").data, /WPC-2026-001/);
+});

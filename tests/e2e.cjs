@@ -30,6 +30,8 @@ const expect = (cond, msg) => { if (!cond) throw new Error(msg); };
   await new Promise(r => server.listen(8765, r));
   const browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: 1360, height: 900 } });
+  const JSPDF = path.resolve(__dirname, "../../jspdf-local/node_modules/jspdf/dist/jspdf.umd.min.js");
+  await page.route("https://cdnjs.cloudflare.com/ajax/libs/jspdf/**", r => r.fulfill({ path: JSPDF, contentType: "text/javascript" }));
   const errors = [];
   page.on("pageerror", e => errors.push(e.message));
   page.on("console", m => { if (m.type() === "error") errors.push(m.text()); });
@@ -94,6 +96,10 @@ const expect = (cond, msg) => { if (!cond) throw new Error(msg); };
       await page.selectOption("#chairman", "u_sec");
       await page.click('.panel [type="submit"]');
       await page.waitForSelector(".stepper");
+      expect(await page.locator(".agenda-rail .rail-item").count() === 5 && await page.locator(".minute").count() === 1, "one-item-at-a-time view with a 5-item rail");
+      await page.click('.rail-item >> nth=2'); expect((await page.textContent(".agenda-focus .num-badge")).trim() === "3", "rail selects item 3");
+      await page.click('[data-action="agenda.step"][data-dir="1"]'); expect((await page.textContent(".agenda-focus .num-badge")).trim() === "4", "next goes to item 4");
+      await page.click('[data-action="agenda.mode"][data-mode="all"]');
       const n = await page.$$eval(".minute", x => x.length);
       expect(n === 5, `expected 5 agenda items, got ${n}`);
     });
@@ -170,6 +176,16 @@ const expect = (cond, msg) => { if (!cond) throw new Error(msg); };
       expect((await page.textContent(".minutes-doc")).includes("v1"), "v1 doc");
       expect((await page.textContent(".minutes-doc")).includes("Deferred"), "outcome in minutes document");
     });
+    await step("Present mode shows one request per screen; meeting pack PDF downloads", async () => {
+      await page.click('[data-action="present.open"]'); await page.waitForSelector(".present .pr-title");
+      const t1 = await page.textContent(".pr-title"); await page.keyboard.press("ArrowRight"); await page.waitForTimeout(100);
+      expect(t1 !== await page.textContent(".pr-title"), "arrow moves to the next item");
+      await page.click('.present [data-action="pdf.pack"]'); await page.waitForTimeout(1500);
+      const f = await page.evaluate(() => window.__DOWNLOADS || []);
+      expect(f.some(x => x.endsWith("-meeting-pack.pdf")), `downloads ${f}`);
+      await page.keyboard.press("Escape"); await page.waitForTimeout(100);
+      expect(!(await page.locator(".present").count()), "Escape closes the presentation");
+    });
     await step("Minutes download as a Word document", async () => {
       await page.click('[data-action="minutes.download"]'); await page.waitForTimeout(200);
       const f = await page.evaluate(() => window.__DOWNLOADS || []);
@@ -223,6 +239,29 @@ const expect = (cond, msg) => { if (!cond) throw new Error(msg); };
       const txt = await page.textContent("#tbl-audit");
       for (const w of ["Closed", "Status:", "Signed minutes v2", "Chairman approved v2", "Requested correction on v1"]) expect(txt.includes(w) || (await page.evaluate(() => document.body.innerText)).includes(w), `audit missing ${w}`);
     });
+    await step("Reports page summarises the period and downloads Word and CSV", async () => {
+      await page.goto("http://localhost:8765/test.html#reports"); await page.waitForSelector(".report-kpis");
+      expect((await page.textContent("main")).includes("Decision log"), "decision log shown");
+      await page.click('[data-action="report.word"]'); await page.click('[data-action="report.csv"][data-kind="audit"]'); await page.waitForTimeout(200);
+      const f = await page.evaluate(() => window.__DOWNLOADS || []);
+      expect(f.some(x => /^wpc-report-.*\.doc$/.test(x)) && f.some(x => /^wpc-audit-.*\.csv$/.test(x)), `downloads ${f}`);
+    });
+    await step("Email to members is prepared for the email app (no email is sent)", async () => {
+      await page.goto("http://localhost:8765/test.html#meetings"); await page.waitForSelector("#tbl-meetings");
+      await page.click('#tbl-meetings tbody tr:has-text("November")'); await page.waitForSelector('[data-action="email.members"]');
+      await page.click('[data-action="email.members"]'); await page.waitForSelector("#em-body");
+      const body = await page.inputValue("#em-body"); const href = await page.getAttribute("#em-open", "href");
+      expect(body.includes("WPC-2026-002") && href.startsWith("mailto:"), "email lists the agenda items and opens via mailto");
+      await page.keyboard.press("Escape");
+    });
+    await step("Attendance sign-in link must be https and shows on the Attendance tab", async () => {
+      await page.click('[data-action="meeting.edit"]'); await page.waitForSelector("#attendanceLink");
+      await page.fill("#attendanceLink", "javascript:alert(1)"); await page.click('.panel [type="submit"]'); await page.waitForTimeout(200);
+      expect(await page.locator(".panel .field.has-error #attendanceLink").count() === 1, "non-https link rejected");
+      await page.fill("#attendanceLink", "https://demo.docusign.net/signing/example"); await page.click('.panel [type="submit"]'); await page.waitForTimeout(300);
+      await page.click('[data-tab="attendance"]'); await page.waitForSelector(".sign-in-link a");
+      expect((await page.getAttribute(".sign-in-link a", "href")).startsWith("https://demo.docusign.net"), "link shown");
+    });
     await step("Export hands a JSON file to the viewer", async () => {
       await page.goto("http://localhost:8765/test.html#admin"); await page.waitForSelector('[data-action="data.export"]');
       await page.click('[data-action="data.export"]'); await page.click('[data-action="data.exportCsv"]'); await page.waitForTimeout(150);
@@ -272,7 +311,7 @@ const expect = (cond, msg) => { if (!cond) throw new Error(msg); };
     });
 
     /* responsive + accessibility */
-    for (const [w, h, route] of [[390, 844, "dashboard"], [390, 844, "items"], [390, 844, "meetings"], [390, 844, "requests"], [820, 1100, "dashboard"]]) {
+    for (const [w, h, route] of [[390, 844, "dashboard"], [390, 844, "items"], [390, 844, "meetings"], [390, 844, "requests"], [390, 844, "reports"], [820, 1100, "dashboard"]]) {
       await step(`No horizontal page scroll at ${w}px on ${route}`, async () => {
         await page.setViewportSize({ width: w, height: h });
         await page.goto(`http://localhost:8765/test.html#${route}`); await page.waitForTimeout(400);
@@ -281,7 +320,7 @@ const expect = (cond, msg) => { if (!cond) throw new Error(msg); };
       });
     }
     await page.setViewportSize({ width: 1360, height: 900 });
-    for (const route of ["dashboard", "items", "meetings", "requests", "review", "records", "admin"]) {
+    for (const route of ["dashboard", "items", "meetings", "requests", "review", "records", "reports", "admin"]) {
       await step(`Accessibility (axe, WCAG 2 AA) on ${route}`, async () => {
         await page.goto(`http://localhost:8765/test.html#${route}`); await page.waitForTimeout(400);
         if (route === "meetings") { await page.click('[data-action="meeting.open"] >> nth=0').catch(() => {}); await page.waitForTimeout(200); }
