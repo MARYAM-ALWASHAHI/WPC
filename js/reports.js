@@ -52,7 +52,7 @@ export function reportsView(ctx) {
     ? `<div class="table-scroll"><table class="grid compact"><thead><tr>${head.map(h => `<th scope="col">${h}</th>`).join("")}</tr></thead><tbody>${rows.join("")}</tbody></table></div>`
     : `<p class="empty">${empty}</p>`;
   return `${pageHeader({ title: "Reports", sub: "Everything the committee did in a period: requests, meetings, decisions, follow-up and the activity log.",
-      actions: ctx.s.downloads ? btn("Full report (Word)", "report.word", { kind: "primary", ic: "download" }) : "" })}
+      actions: ctx.s.downloads ? btn("Word", "report.word", { kind: "ghost", ic: "download", title: "Word file for editing on a computer" }) + btn("Full report (PDF)", "report.pdf", { kind: "primary", ic: "download" }) : "" })}
   <form class="filterbar report-period" data-form="report.period" novalidate>
     <label class="fb"><span>From</span><input type="date" name="from" value="${esc(from)}" data-action="filter.report" data-key="from"></label>
     <label class="fb"><span>To</span><input type="date" name="to" value="${esc(to)}" data-action="filter.report" data-key="to"></label>

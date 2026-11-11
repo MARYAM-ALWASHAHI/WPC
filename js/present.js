@@ -72,90 +72,181 @@ function loadJsPdf() {
   return jsPdfPromise;
 }
 
-const INK = [20, 32, 43], MUTED = [72, 87, 101], TEAL = [11, 110, 105], NAVY = [11, 42, 60], LINE = [224, 229, 234], MARK = [242, 177, 52];
+const INK = [20, 32, 43], MUTED = [72, 87, 101], TEAL = [11, 110, 105], NAVY = [11, 42, 60], LINE = [224, 229, 234], MARK = [242, 177, 52], SOFT = [246, 248, 249];
 
-/**
- * @param {object} o { ctx, meeting (optional), items: [item], name(uid) }
- * @returns {Promise<Blob>}
- */
-export async function buildPdf({ ctx, meeting = null, items }) {
+/** A small layout kit over jsPDF: running y, page breaks, band header, headings, paragraphs, key/value grid, tables. */
+async function writer(footerLabel) {
   const JsPDF = await loadJsPdf();
   const doc = new JsPDF({ unit: "mm", format: "a4" });
-  const W = 210, H = 297, L = 18, R = W - 18, CW = R - L;
-  let y = 0;
-  const footer = () => {
-    const n = doc.getNumberOfPages();
-    for (let p = 1; p <= n; p++) {
-      doc.setPage(p);
-      doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(...MUTED);
-      doc.text(`Workforce Planning Committee${meeting ? ` · ${meeting.ref}` : ""} · Generated ${new Date().toLocaleDateString("en-GB")} from WPC Hub`, L, H - 10);
-      doc.text(`Page ${p} of ${n}`, R, H - 10, { align: "right" });
-    }
-  };
-  const ensure = h => { if (y + h > H - 20) { doc.addPage(); y = 20; } };
-  const para = (txt, size = 10.5, color = INK, style = "normal", gap = 1.6) => {
-    doc.setFont("helvetica", style); doc.setFontSize(size); doc.setTextColor(...color);
-    const lines = doc.splitTextToSize(String(txt || ""), CW);
-    const lh = size * 0.42;
-    for (const ln of lines) { ensure(lh); doc.text(ln, L, y); y += lh; }
-    y += gap;
-  };
-  const heading = t => { ensure(12); y += 2; doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.setTextColor(...TEAL); doc.text(t.toUpperCase(), L, y); y += 2; doc.setDrawColor(...LINE); doc.line(L, y, R, y); y += 5; };
-  const band = (title, sub) => {
+  const W = 210, H = 297, L = 16, R = W - 16, CW = R - L;
+  const k = { doc, W, H, L, R, CW, y: 20 };
+  k.ensure = h => { if (k.y + h > H - 18) { doc.addPage(); k.y = 18; return true; } return false; };
+  k.band = (title, sub, kicker = "WORKFORCE PLANNING COMMITTEE") => {
     doc.setFont("helvetica", "bold"); doc.setFontSize(16);
     const tl = doc.splitTextToSize(title, CW).slice(0, 2);
     const hgt = 28 + tl.length * 6.5;
     doc.setFillColor(...NAVY); doc.rect(0, 0, W, hgt, "F");
     doc.setFillColor(...MARK); doc.rect(0, hgt, W, 1.5, "F");
-    doc.setTextColor(255, 255, 255); doc.setFontSize(9);
-    doc.text("WORKFORCE PLANNING COMMITTEE", L, 13);
-    doc.setFontSize(16); tl.forEach((ln, k) => doc.text(ln, L, 22 + k * 6.5));
-    doc.setFont("helvetica", "normal"); doc.setFontSize(9.5); doc.text(doc.splitTextToSize(sub, CW)[0], L, hgt - 5);
-    y = hgt + 12;
+    doc.setTextColor(255, 255, 255); doc.setFontSize(9); doc.text(kicker, L, 13);
+    doc.setFontSize(16); tl.forEach((ln, i) => doc.text(ln, L, 22 + i * 6.5));
+    doc.setFont("helvetica", "normal"); doc.setFontSize(9.5); doc.text(doc.splitTextToSize(sub || "", CW)[0] || "", L, hgt - 5);
+    k.y = hgt + 10;
   };
-
-  if (meeting) {
-    band(meeting.title, `${meeting.ref} · ${meeting.date || ""}${meeting.time ? ` · ${meeting.time}` : ""}${meeting.location ? ` · ${meeting.location}` : ""}`);
-    heading("Meeting pack: agenda");
-    items.forEach((it, i) => {
-      ensure(10);
-      doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.setTextColor(...INK);
-      doc.text(`${i + 1}.`, L, y);
-      const t = doc.splitTextToSize(`${it.ref}  ${it.title}`, CW - 8);
-      doc.text(t, L + 8, y); y += t.length * 4.8;
-      doc.setFont("helvetica", "normal"); doc.setFontSize(9); doc.setTextColor(...MUTED);
-      doc.text(`${it.dept} · ${it.category}${it.hcRequested ? ` · ${it.hcRequested} position(s)` : ""}`, L + 8, y); y += 7;
-    });
-    para("Each request follows on its own page. Earlier committee decisions on the same item are listed under it.", 9, MUTED);
-  }
-
-  items.forEach((it, i) => {
-    if (meeting || i > 0) doc.addPage();
-    band(it.title, `${it.ref} · ${it.dept} · ${it.category}${it.sub ? ` · ${it.sub}` : ""}`);
-    const t = tiles(it);
-    if (t.length) {
-      const tw = (CW - (t.length - 1) * 3) / t.length;
-      t.forEach(([l, v], k) => {
-        const x = L + k * (tw + 3);
-        doc.setDrawColor(...LINE); doc.setFillColor(246, 248, 249); doc.roundedRect(x, y, tw, 17, 2, 2, "FD");
-        doc.setFont("helvetica", "normal"); doc.setFontSize(7.5); doc.setTextColor(...MUTED); doc.text(l.toUpperCase(), x + 3, y + 6);
-        doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.setTextColor(...INK); doc.text(doc.splitTextToSize(v, tw - 5)[0], x + 3, y + 13);
+  k.heading = (t, size = 9) => { k.ensure(14); k.y += 2; doc.setFont("helvetica", "bold"); doc.setFontSize(size); doc.setTextColor(...TEAL); doc.text(t.toUpperCase(), L, k.y); k.y += 2; doc.setDrawColor(...LINE); doc.line(L, k.y, R, k.y); k.y += 5; };
+  k.title = (t, size = 12.5) => { doc.setFont("helvetica", "bold"); doc.setFontSize(size); doc.setTextColor(...INK); const ls = doc.splitTextToSize(t, CW); k.ensure(ls.length * size * .45 + 2); doc.text(ls, L, k.y); k.y += ls.length * size * .45 + 1.5; };
+  k.para = (txt, size = 10, color = INK, style = "normal", gap = 1.8, x = L, w = CW) => {
+    doc.setFont("helvetica", style); doc.setFontSize(size); doc.setTextColor(...color);
+    const lh = size * 0.43;
+    for (const ln of doc.splitTextToSize(String(txt ?? "") || "—", w)) { k.ensure(lh); doc.text(ln, x, k.y); k.y += lh; }
+    k.y += gap;
+  };
+  k.label = (t, x = L) => { doc.setFont("helvetica", "bold"); doc.setFontSize(7.5); doc.setTextColor(...MUTED); doc.text(t.toUpperCase(), x, k.y); k.y += 3.8; };
+  /** Grid of label/value cells, `cols` per row. */
+  k.facts = (pairs, cols = 3) => {
+    pairs = pairs.filter(([, v]) => v !== "" && v != null);
+    if (!pairs.length) return;
+    const cw = (CW - (cols - 1) * 3) / cols;
+    for (let r = 0; r < pairs.length; r += cols) {
+      const row = pairs.slice(r, r + cols);
+      doc.setFontSize(10);
+      const hs = row.map(([, v]) => doc.splitTextToSize(String(v), cw - 6).length);
+      const h = 9 + Math.max(...hs) * 4.3;
+      k.ensure(h + 3);
+      row.forEach(([l, v], i) => {
+        const x = L + i * (cw + 3);
+        doc.setDrawColor(...LINE); doc.setFillColor(...SOFT); doc.roundedRect(x, k.y, cw, h, 1.5, 1.5, "FD");
+        doc.setFont("helvetica", "bold"); doc.setFontSize(7); doc.setTextColor(...MUTED); doc.text(l.toUpperCase(), x + 3, k.y + 5);
+        doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.setTextColor(...INK); doc.text(doc.splitTextToSize(String(v), cw - 6), x + 3, k.y + 10);
       });
-      y += 24;
+      k.y += h + 3;
     }
-    heading("Request and justification");
-    para(it.request || "—", 11);
-    heading("Responsible");
-    para(it.owner || "—");
-    const prev = earlier(ctx, meeting, it);
-    if (prev.length) { heading("Earlier decisions"); prev.forEach(x => para(`${x.m.date || ""}${x.mn.outcome ? ` · ${x.mn.outcome}` : ""}: ${x.mn.decision || ""}`, 10)); }
+    k.y += 1;
+  };
+  /** Table with wrapped cells. widths are fractions of the content width. */
+  k.table = (head, rows, widths) => {
+    if (!rows.length) { k.para("None.", 9.5, MUTED); return; }
+    const ws = widths.map(f => f * CW);
+    const drawHead = () => {
+      doc.setFillColor(238, 242, 245); doc.rect(L, k.y - 4, CW, 7, "F");
+      doc.setFont("helvetica", "bold"); doc.setFontSize(7.5); doc.setTextColor(...MUTED);
+      let x = L; head.forEach((h, i) => { doc.text(h.toUpperCase(), x + 1.5, k.y); x += ws[i]; }); k.y += 5;
+    };
+    k.ensure(14); drawHead();
+    for (const row of rows) {
+      doc.setFont("helvetica", "normal"); doc.setFontSize(9);
+      const cells = row.map((c, i) => doc.splitTextToSize(String(c ?? "—") || "—", ws[i] - 3));
+      const h = Math.max(...cells.map(c => c.length)) * 3.9 + 2.5;
+      if (k.ensure(h)) drawHead();
+      doc.setTextColor(...INK);
+      let x = L; cells.forEach((c, i) => { doc.text(c, x + 1.5, k.y); x += ws[i]; });
+      k.y += h - 1; doc.setDrawColor(...LINE); doc.line(L, k.y - 2.5, R, k.y - 2.5); k.y += 1.5;
+    }
+    k.y += 2;
+  };
+  k.finish = () => {
+    const n = doc.getNumberOfPages();
+    for (let p = 1; p <= n; p++) {
+      doc.setPage(p);
+      doc.setFont("helvetica", "normal"); doc.setFontSize(7.5); doc.setTextColor(...MUTED);
+      doc.text(`${footerLabel} · Generated ${new Date().toLocaleString("en-GB")} from WPC Hub`, L, H - 9);
+      doc.text(`Page ${p} of ${n}`, R, H - 9, { align: "right" });
+    }
+    return doc.output("blob");
+  };
+  return k;
+}
+
+const factPairs = it => [
+  ["Department", it.dept], ["Category", [it.category, it.sub].filter(Boolean).join(" · ")], ["Responsible", it.owner || ""],
+  ["Positions requested", it.hcRequested != null && it.hcRequested !== "" ? String(it.hcRequested) : ""], ["Grade", gradeTxt(it.grade)],
+  ["Budget", it.budgeted || ""], ["Annual cost", fmtOMR(it.annualCost)], ["Effective date", it.effectiveDate ? fmtDate(it.effectiveDate) : ""],
+  ["Submitted", it.createdAt ? fmtDate(it.createdAt) : ""],
+];
+
+/** Meeting pack (cover + one page per request) or a single request sheet. */
+export async function buildPdf({ ctx, meeting = null, items }) {
+  const k = await writer(`Workforce Planning Committee${meeting ? ` · ${meeting.ref}` : ""}`);
+  if (meeting) {
+    k.band(meeting.title, `${meeting.ref} · ${fmtDate(meeting.date)}${meeting.time ? ` · ${meeting.time}` : ""}${meeting.location ? ` · ${meeting.location}` : ""}`, "WORKFORCE PLANNING COMMITTEE · MEETING PACK");
+    k.heading("Agenda");
+    k.table(["#", "Reference", "Item", "Department", "Positions"], items.map((it, i) => [i + 1, it.ref, it.title, it.dept, it.hcRequested ?? "—"]), [.06, .17, .47, .18, .12]);
+    k.para("Each request follows on its own page with everything the committee needs: the request, the manpower details, supporting documents, earlier decisions and open follow-up.", 9, MUTED);
+  }
+  items.forEach((it, i) => {
+    if (meeting || i > 0) k.doc.addPage();
+    k.band(it.title, `${it.ref} · ${it.dept} · ${it.category}`, meeting ? `AGENDA ITEM ${i + 1} OF ${items.length}` : "WORKFORCE PLANNING COMMITTEE · REQUEST SHEET");
+    k.heading("Manpower details"); k.facts(factPairs(it), 3);
+    k.heading("Request and justification"); k.para(it.request || "—", 10.5);
     const docs = (it.attachments || []).filter(a => (a.kind || "request") === "request");
-    if (docs.length) { heading("Supporting documents (in WPC Hub)"); docs.forEach(a => para(`• ${a.name}`, 10)); }
+    k.heading("Supporting documents"); k.para(docs.length ? docs.map(a => `• ${a.name}`).join("\n") : "None attached in WPC Hub.", 10, docs.length ? INK : MUTED);
+    const prev = earlier(ctx, meeting, it);
+    k.heading("Earlier committee decisions");
+    if (prev.length) k.table(["Meeting", "Outcome", "Decision"], prev.map(x => [`${fmtDate(x.m.date)}\n${x.m.ref}`, x.mn.outcome || "—", x.mn.decision || ""]), [.2, .2, .6]);
+    else k.para("First time at the committee.", 10, MUTED);
+    const open = Object.values(ctx.d.actions).filter(a => a.itemId === it.id && a.status !== "DONE" && a.status !== "CANCELLED");
+    if (open.length) { k.heading("Open follow-up actions"); k.table(["Action", "Responsible", "Due"], open.map(a => [a.text, a.owner, a.due ? fmtDate(a.due) : ""]), [.55, .27, .18]); }
     if (meeting) {
-      heading("Committee decision (to be completed in the meeting)");
-      ["Outcome", "Positions approved", "Decision wording"].forEach(l => { ensure(12); doc.setFont("helvetica", "normal"); doc.setFontSize(9); doc.setTextColor(...MUTED); doc.text(l, L, y); doc.setDrawColor(...LINE); doc.line(L + 38, y + 1, R, y + 1); y += 10; });
+      k.heading("Committee decision (completed in the meeting)");
+      ["Outcome", "Positions approved", "Decision wording", "Follow-up actions"].forEach(l => { k.ensure(11); k.doc.setFont("helvetica", "normal"); k.doc.setFontSize(9); k.doc.setTextColor(...MUTED); k.doc.text(l, k.L, k.y); k.doc.setDrawColor(...LINE); k.doc.line(k.L + 40, k.y + 1, k.R, k.y + 1); k.y += 10; });
     }
   });
-  footer();
-  return doc.output("blob");
+  return k.finish();
+}
+
+/** Minutes: draft (live data) or a circulated version (frozen snapshot). */
+export async function buildMinutesPdf({ m, snap, draft, name, sigRows = [], chairSig = null }) {
+  const k = await writer(`WPC minutes · ${m.ref}${draft ? " · DRAFT" : ` · version ${snap.v}`}`);
+  k.band(m.title, `${m.ref} · ${fmtDate(m.date)}${snap.time || m.time ? ` · ${snap.time || m.time}` : ""}${snap.location || m.location ? ` · ${snap.location || m.location}` : ""}`, `MINUTES OF MEETING · ${draft ? "DRAFT, NOT CIRCULATED" : `VERSION ${snap.v}`}`);
+  const att = snap.attendance || {};
+  const who = s => Object.entries(att).filter(([, x]) => x === s).map(([u]) => name(u)).join(", ");
+  k.heading("Meeting");
+  k.facts([["Reference", m.ref], ["Date", fmtDate(m.date)], ["Time", snap.time || m.time || ""], ["Location", snap.location || m.location || ""], ["Chairman", m.chairman ? name(m.chairman) : ""], ["Items", String(snap.items.length)]], 3);
+  k.heading("Attendance");
+  k.facts([["Present", who("Present") || "Not recorded"], ["Apologies", who("Apology") || "—"], ["Absent", who("Absent") || "—"]], 3);
+  k.heading("Summary of decisions");
+  k.table(["#", "Item", "Outcome", "Positions approved"], snap.items.map((x, i) => [i + 1, `${x.ref} ${x.title}`, x.outcome || "Not recorded", x.hcApproved ?? "—"]), [.06, .56, .24, .14]);
+  snap.items.forEach((x, i) => {
+    k.ensure(40); k.y += 3;
+    k.doc.setFillColor(...MARK); k.doc.rect(k.L, k.y - 4.5, 1.6, 6, "F");
+    k.doc.setFont("helvetica", "bold"); k.doc.setFontSize(8.5); k.doc.setTextColor(...TEAL); k.doc.text(`ITEM ${i + 1} · ${x.ref}`, k.L + 4, k.y); k.y += 5.5;
+    k.title(x.title);
+    k.facts(factPairs(x).filter(([l]) => l !== "Submitted"), 4);
+    k.label("Request"); k.para(x.request, 9.5);
+    k.label("Discussion"); k.para(x.discussion || "—", 9.5);
+    k.label("Outcome"); k.para(`${x.outcome || "Not recorded"}${x.hcApproved != null && x.hcApproved !== "" ? ` · ${x.hcApproved} position(s) approved` : ""}`, 10, INK, "bold");
+    k.label("Decision"); k.para(x.decision || "—", 9.5);
+    k.label("Follow-up actions");
+    if (x.actions.length) k.table(["Action", "Responsible", "Due"], x.actions.map(a => [a.text, a.owner, a.due ? fmtDate(a.due) : ""]), [.55, .27, .18]); else k.para("None.", 9.5, MUTED);
+    k.doc.setDrawColor(...LINE); k.doc.line(k.L, k.y, k.R, k.y); k.y += 3;
+  });
+  if (!draft) {
+    k.heading(`Signatures on version ${snap.v}`);
+    k.table(["Name", "Role", "Status", "Date"], [...sigRows, ...(chairSig ? [chairSig] : [])], [.34, .16, .26, .24]);
+    k.para("Sign-off recorded in WPC Hub. This is an approval record, not a qualified electronic signature.", 8.5, MUTED);
+  } else k.para("Draft for review. Not circulated and not signed.", 9, MUTED);
+  return k.finish();
+}
+
+/** Committee report for a period (data from reports.js reportData). */
+export async function buildReportPdf({ r, name }) {
+  const k = await writer(`WPC report · ${r.from} to ${r.to}`);
+  k.band("Committee report", `${fmtDate(r.from)} to ${fmtDate(r.to)}`, "WORKFORCE PLANNING COMMITTEE · REPORT");
+  k.heading("Summary");
+  k.facts([["Requests received", String(r.received.length)], ["Positions requested", String(r.hcRequested)], ["Meetings held", String(r.meetings.length)],
+    ["Decisions recorded", String(r.decisions.length)], ["Final decisions", String(r.finals.length)], ["Positions approved", String(r.hcApproved)],
+    ["Request to decision", r.avgCycle == null ? "—" : `${r.avgCycle} days`], ["Items closed", String(r.closed.length)], ["Open items today", String(r.openNow)],
+    ["Open actions", String(r.actionsOpen)], ["Overdue actions", String(r.actionsOverdue)], ["Department requests", String(r.requests.length)]], 3);
+  k.heading("Decisions by outcome");
+  k.table(["Outcome", "Count"], r.outcomes.filter(([, n]) => n), [.8, .2]);
+  k.heading("Decision log");
+  k.table(["Meeting", "Item", "Department", "Outcome", "Pos.", "Decision"], r.decisions.map(d => [`${fmtDate(d.m.date)}\n${d.m.ref}`, `${d.it.ref}\n${d.it.title}`, d.it.dept, d.mn.outcome || "—", d.mn.hcApproved ?? "—", d.mn.decision || ""]), [.13, .27, .13, .14, .06, .27]);
+  k.heading("Meetings");
+  k.table(["Date", "Meeting", "Items", "Present", "Minutes"], r.meetings.map(m => [fmtDate(m.date), `${m.title}\n${m.ref}`, m.agenda.length, Object.values(m.attendance || {}).filter(s => s === "Present").length || "—", m.status === "archived" ? `Final v${m.version}` : m.version ? `v${m.version} under review` : "Not circulated"]), [.15, .43, .1, .12, .2]);
+  k.heading("Follow-up by responsible");
+  k.table(["Responsible", "Open", "Overdue", "Done"], r.owners.map(o => [o.owner, o.open, o.overdue, o.done]), [.55, .15, .15, .15]);
+  k.heading("Department requests");
+  k.table(["Submitted", "Request", "Department", "Positions"], r.requests.map(q => [fmtDate(q.submittedAt), q.title, q.dept, q.hcRequested ?? "—"]), [.16, .5, .2, .14]);
+  k.heading(`Activity log (${r.audit.length} entries${r.audit.length > 60 ? ", latest 60" : ""})`);
+  k.table(["When", "Who", "Record", "What"], r.audit.slice(0, 60).map(e => [new Date(e.at).toLocaleString("en-GB"), name(e.by), e.ref || e.entity, `${e.action}${e.detail ? `: ${e.detail}` : ""}`]), [.2, .18, .16, .46]);
+  return k.finish();
 }

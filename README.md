@@ -30,3 +30,11 @@ On claude.ai the file does nothing. Real committee work uses the claude.ai versi
 - "Email members": prepares the email with the accepted items for the viewer's email app or clipboard. WPC Hub does not send email.
 - Attendance sign-in link (e.g. DocuSign) per meeting, https only. WPC Hub links to it; it does not read signatures from DocuSign.
 - Reports page (js/reports.js): period summary, decision log, meetings, follow-up by responsible, activity log; Word and CSV downloads.
+
+## v5 (Nov 2026)
+- Each agenda item opens a full **Request file**: department, category, responsible, positions, grade, budget, annual cost, effective date, full request text, documents, earlier decisions and open follow-up from earlier meetings.
+- **Record the decision** is now four numbered steps: discussion, outcome, decision wording, follow-up actions.
+- **What happens now** box under the meeting stepper: numbered steps for the person's role at the current stage, and who the meeting is waiting on.
+- Minutes and the report download as **PDF** (fixes the blank screen phones show for the Word file). Word stays as a secondary button.
+- Minutes PDF and Word now include cost, responsible and subcategory per item.
+- **Email members → Open in Outlook** opens a filled Outlook on the web compose window. Nothing is sent automatically; the user presses Send.

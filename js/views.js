@@ -304,7 +304,9 @@ export function meetingDetail(ctx, m) {
     if (m.status === "circulated" && ["approved", "signed"].includes(ph.key)) transitions.push(btn("Archive approved minutes", "meeting.transition", { kind: "primary", ic: "archive", data: { id: m.id, to: "archived" } }));
     if (m.status !== "archived") transitions.unshift(btn("Edit details", "meeting.edit", { ic: "edit", data: { id: m.id } }));
   }
-  if (ctx.s.downloads && agenda.length) transitions.unshift(btn(m.snapshot ? `Download minutes v${m.version} (Word)` : "Download draft (Word)", "minutes.download", { ic: "download", data: { id: m.id } }));
+  if (ctx.s.downloads && agenda.length) transitions.unshift(
+    btn(m.snapshot ? `Minutes v${m.version} (PDF)` : "Draft minutes (PDF)", "minutes.pdf", { ic: "download", data: { id: m.id } }),
+    btn("Word", "minutes.download", { kind: "ghost", ic: "download", title: "Word file for editing on a computer", data: { id: m.id } }));
   if (sec && agenda.length && m.status !== "archived") transitions.unshift(btn("Email members", "email.members", { ic: "mail", data: { id: m.id } }));
   if (agenda.length) transitions.unshift(btn("Present", "present.open", { ic: "present", data: { id: m.id } }));
   const q = quorumState(m, ctx.d.roster.quorum);
@@ -312,11 +314,47 @@ export function meetingDetail(ctx, m) {
   return `${pageHeader({ crumbs: [{ label: "Meetings", href: "#meetings", action: "meeting.back" }, { label: m.title }], title: m.title,
       sub: `<span class="ref">${esc(m.ref)}</span> · ${fmtDate(m.date)}${m.time ? ` · ${esc(m.time)}` : ""}${m.location ? ` · ${esc(m.location)}` : ""}${m.version ? ` · minutes v${m.version}` : ""} · ${phaseBadge(ctx, m)}${q.required ? ` · ${badge(q.met ? `Quorum met (${q.present}/${q.required})` : `No quorum (${q.present}/${q.required})`, q.met ? "ok" : "bad")}` : ""}`, actions: transitions.join("") })}
   ${stepper(ctx, m)}
+  ${meetingGuide(ctx, m, ph, s, agenda)}
   ${banners(ctx, m, ph, s)}
   <div class="tabs" role="tablist">${tabs.map(([k, l]) => `<button role="tab" aria-selected="${tab === k}" class="tab ${tab === k ? "on" : ""}" data-action="meeting.tab" data-tab="${k}">${esc(l)}</button>`).join("")}</div>
   <div class="tabpanel" role="tabpanel">
   ${tab === "agenda" ? agendaTab(ctx, m, agenda) : tab === "attendance" ? attendanceTab(ctx, m, q) : tab === "signatures" ? signaturesTab(ctx, m, s) : tab === "versions" ? versionsTab(ctx, m) : meetingLog(ctx, m)}
   </div>`;
+}
+
+/** "What happens now": the steps for the viewer's role at this stage, and who the meeting is waiting on. */
+function meetingGuide(ctx, m, ph, s, agenda) {
+  const role = ctx.role, me = ctx.s.myId;
+  const isMember = me && m.members.includes(me), isChair = me && m.chairman === me;
+  const missing = agenda.filter(it => !(ctx.d.minutes[`${m.id}__${it.id}`] || {}).outcome);
+  const sec = role === "Secretary";
+  const G = {
+    preparation: { wait: "Secretaries are preparing the agenda.",
+      sec: ["Check the agenda: add or remove items so it holds everything ready for decision.", "Open each item and check its request file is complete (positions, grade, budget, documents).", "Under Edit details, set the time, location, Chairman and the attendance sign-in link (DocuSign).", "Click Issue agenda."],
+      other: ["Nothing to do yet. You can already read the requests below."] },
+    agenda_issued: { wait: "Agenda issued. The meeting has not started.",
+      sec: ["Click Email members to send the agenda, or download the Meeting pack (PDF) and share it.", "On the meeting day, click Start meeting."],
+      other: ["Read each request before the meeting: use Present or download the Meeting pack (PDF).", "Note your questions for the department."] },
+    in_session: { wait: `Meeting in progress: ${agenda.length - missing.length} of ${agenda.length} items decided.`,
+      sec: ["Pick an item from the list on the left (one at a time).", "Step 1 Discussion, step 2 Outcome and positions approved, step 3 Decision wording, step 4 Follow-up actions.", "Record attendance on the Attendance tab.", missing.length ? `${missing.length} item${missing.length > 1 ? "s" : ""} still need an outcome. When all are done, click End meeting.` : "All items have an outcome. Click End meeting."],
+      other: ["Follow along: each item shows its request file, and decisions appear as the secretaries record them."] },
+    drafting: { wait: "Meeting held. Secretaries are finishing the minutes.",
+      sec: [missing.length ? `Complete the outcome for: ${missing.map(i => i.ref).join(", ")}.` : "Every item has an outcome.", "Read through the decision wording and actions once more.", "Check who signs on the Signatures tab.", `Click Circulate minutes as v${m.version + 1}. The minutes are frozen and members are asked to sign.`],
+      other: ["Nothing to do yet. You will be asked to sign when the minutes are circulated."] },
+    circulated: { wait: ph.key === "correction" ? "A correction was requested. Secretaries will issue a new version." : !s.allSigned ? `Waiting for member signatures (${s.signed} of ${s.total}).` : !s.chairApproved && m.chairman ? `Waiting for the Chairman (${esc(ctx.name(m.chairman))}).` : "Approved. Ready to archive.",
+      sec: ph.key === "correction" ? ["Read the correction request in the red box.", "Click Revise minutes, fix the text, then circulate the new version."] : !s.allSigned ? ["Follow signatures on the Signatures tab.", "Remind members who have not signed."] : ["Click Archive approved minutes. The record is locked."],
+      member: ["Read the minutes below.", "Click Sign, or Request correction and say what must change."],
+      chair: s.allSigned ? ["Read the minutes below.", "Click Approve minutes, or Request correction."] : [`Approval opens when all members have signed (${s.signed} of ${s.total}).`],
+      other: ["The minutes are under review by the committee."] },
+    archived: { wait: "Final minutes approved and locked.",
+      sec: ["Download the final minutes (PDF) for the file.", "Follow up the actions. Close each item from Agenda items when its follow-up is done and evidence is recorded."],
+      other: ["Download the final minutes (PDF) if you need a copy."] },
+  }[m.status];
+  if (!G) return "";
+  const steps = sec ? G.sec : isChair && G.chair ? G.chair : isMember && G.member && !sigFor(m, me, ctx.d.sigs) ? G.member : G.other;
+  return `<section class="guide" aria-label="What happens now"><div class="guide-h"><span class="guide-tag">What happens now</span><b>${G.wait}</b></div>
+    <ol class="guide-steps">${steps.map(t => `<li>${t}</li>`).join("")}</ol>
+    <span class="guide-role">You are viewing as ${esc(role)}${isChair && role !== "Secretary" ? " (Chairman of this meeting)" : ""}</span></section>`;
 }
 
 function banners(ctx, m, ph, s) {
@@ -360,7 +398,7 @@ function agendaTab(ctx, m, agenda) {
   const editAgenda = sec && canEditAgenda(m), editMin = sec && canEditMinutes(m);
   if (m.status === "circulated" || m.status === "archived") return minutesDocument(ctx, m, m.snapshot);
   const candidates = Object.values(ctx.d.items).filter(i => isItemOpen(i) && !i.archived && !m.agenda.includes(i.id));
-  return `${m.status === "preparation" || m.status === "agenda_issued" ? msg("info", m.status === "preparation" ? "Build the agenda, then issue it. Minutes open when the meeting starts." : "Agenda issued. Start the meeting to record live minutes.") : ""}
+  return `
   ${editAgenda ? `<div class="toolbar">
       <label class="fb"><span>Add open item</span><select id="add-item" aria-label="Open item to add"><option value="">Select an item…</option>${candidates.map(i => `<option value="${esc(i.id)}">${esc(i.ref)} · ${esc(i.title)}</option>`).join("")}</select></label>
       ${btn("Add", "agenda.add", { data: { id: m.id } })}
@@ -401,29 +439,52 @@ function minuteBlock(ctx, m, it, n, editAgenda, editMin) {
   const key = `${m.id}__${it.id}`;
   const mn = ctx.d.minutes[key] || {};
   const acts = actionsArr(ctx).filter(a => a.itemId === it.id && a.meetingId === m.id);
-  const prior = meetingsOf(ctx, it).filter(x => x.id !== m.id && (x.date || "") < (m.date || ""));
   const showMin = m.status !== "preparation" && m.status !== "agenda_issued";
+  const focused = (ctx.ui.agendaMode || "one") === "one";
   const ta = (f, label, ph) => editMin
     ? `<div class="field"><label for="min-${key}-${f}">${label}</label><textarea id="min-${key}-${f}" data-minute="${esc(key)}" data-field="${f}" data-rev="${mn.rev || 0}" placeholder="${esc(ph)}" rows="3">${esc(mn[f] || "")}</textarea></div>`
     : `<div><span class="lbl">${label}</span><p class="pre">${esc(mn[f] || "—")}</p></div>`;
+  const step = (k, title, body, done) => `<section class="rec-step ${done ? "done" : ""}"><div class="rec-n" aria-hidden="true">${done ? icon("actions") : k}</div><div class="rec-b"><h4>${title}</h4>${body}</div></section>`;
   return `<article class="card minute" aria-labelledby="mi-${esc(key)}">
-    <div class="minute-h"><div><span class="num-badge">${n}</span> ${refLink(it)} <h3 id="mi-${esc(key)}">${esc(it.title)}</h3>
-      <div class="hint">${esc(it.category)} · ${esc(it.sub || "")} · ${esc(it.dept)} · Responsible: ${esc(it.owner || "—")}${prior.length ? ` · previously discussed in ${prior.length} meeting${prior.length > 1 ? "s" : ""}` : ""}</div></div>
-      <div class="minute-tools">${presenceFor(ctx, key)}${badge(stageOf(ctx, it))}${editAgenda ? btn("Remove", "agenda.remove", { kind: "ghost", data: { id: m.id, item: it.id } }) : ""}</div></div>
-    <div class="req-line">${factsLine(it)}<p class="pre">${esc(it.request || "—")}</p>${(it.attachments || []).filter(a => (a.kind || "request") === "request").map(a => `<a class="doc-link" href="${esc(fileUrl(a.id))}" target="_blank" rel="noopener">${icon("items")}${esc(a.name)}</a>`).join("")}</div>
-    ${prior.length ? `<details class="prior"><summary>Earlier decisions (${prior.length})</summary>${prior.map(p => { const pm = ctx.d.minutes[`${p.id}__${it.id}`] || {}; return `<p><b>${esc(p.title)}, ${fmtDate(p.date)}:</b> ${esc(pm.decision || "No decision recorded")}</p>`; }).join("")}</details>` : ""}
-    ${showMin ? `<div class="outcome-row">${editMin
+    <div class="minute-h"><div><span class="num-badge">${n}</span> ${refLink(it)} <h3 id="mi-${esc(key)}">${esc(it.title)}</h3></div>
+      <div class="minute-tools">${presenceFor(ctx, key)}${badge(stageOf(ctx, it))}${btn("Request sheet (PDF)", "pdf.item", { kind: "ghost", ic: "download", data: { id: it.id } })}${editAgenda ? btn("Remove", "agenda.remove", { kind: "ghost", data: { id: m.id, item: it.id } }) : ""}</div></div>
+    <details class="dossier" ${focused || !showMin ? "open" : ""}><summary><span>Request file</span><span class="hint">Everything the committee needs to decide this item</span></summary>${itemDossier(ctx, m, it)}</details>
+    ${showMin ? `<div class="record"><div class="record-h"><h4>Record the decision</h4><span class="hint">Work down the steps. Each field saves when you leave it.</span></div>
+      ${step(1, "Discussion", `<div class="minute-grid one">${ta("discussion", "Summary of the discussion", "Key points raised, questions to the department, answers given")}</div>`, !!mn.discussion?.trim())}
+      ${step(2, "Outcome", `<div class="outcome-row">${editMin
         ? `<div class="field"><label for="out-${key}">Outcome<span class="req" aria-hidden="true">*</span></label><select id="out-${key}" data-action="minute.outcome" data-minute="${esc(key)}"><option value="">Choose…</option>${Object.keys(OUTCOMES).map(o => `<option ${mn.outcome === o ? "selected" : ""}>${o}</option>`).join("")}</select></div>
            <div class="field"><label for="hc-${key}">Positions approved</label><input id="hc-${key}" type="number" min="0" step="1" data-action="minute.hc" data-minute="${esc(key)}" value="${esc(mn.hcApproved ?? "")}" placeholder="${esc(it.hcRequested ?? "")}"></div>`
-        : `<div><span class="lbl">Outcome</span><p>${mn.outcome ? badge(mn.outcome, outcomeTone(mn.outcome)) : "—"}${mn.hcApproved != null && mn.hcApproved !== "" ? ` <span class="hint">${esc(mn.hcApproved)} positions approved</span>` : ""}</p></div>`}</div>
-    <div class="minute-grid">${ta("discussion", "Discussion summary", "Key points raised")}${ta("decision", "Decision wording", "e.g. Recommended: renew for 2 years")}</div>
-    ${mn.updatedBy ? `<div class="hint">Last saved by ${esc(ctx.name(mn.updatedBy))} at ${fmtDateTime(mn.updatedAt)} · revision ${mn.rev || 1}</div>` : ""}
-    <div class="sub-sec"><span class="lbl">Follow-up actions</span>
+        : `<div><span class="lbl">Outcome</span><p>${mn.outcome ? badge(mn.outcome, outcomeTone(mn.outcome)) : "—"}${mn.hcApproved != null && mn.hcApproved !== "" ? ` <span class="hint">${esc(mn.hcApproved)} positions approved</span>` : ""}</p></div>`}</div>`, !!mn.outcome)}
+      ${step(3, "Decision wording", `<div class="minute-grid one">${ta("decision", "Decision as it will appear in the minutes", "e.g. Approved: renew the contract for 2 years from 1 Jan 2027")}</div>`, !!mn.decision?.trim())}
+      ${step(4, "Follow-up actions", `
       ${acts.length ? `<table class="grid compact"><thead><tr><th scope="col">Action</th><th scope="col">Responsible</th><th scope="col">Due</th><th scope="col">Status</th></tr></thead><tbody>${acts.map(a => `<tr class="${isOverdue(a, ctx.today) ? "row-bad" : ""}"><td>${esc(a.text)}</td><td>${esc(a.owner)}</td><td class="num">${fmtDate(a.due)}</td><td>${ctx.role === "Secretary" ? actionStatusSelect(a) : actionBadge(a, ctx.today)}</td></tr>`).join("")}</tbody></table>` : `<p class="empty">No actions yet.</p>`}
       ${editMin ? `<form class="inline-form" data-form="action.create" data-meeting="${esc(m.id)}" data-item="${esc(it.id)}" novalidate>
         <input name="text" placeholder="Action" aria-label="Action" required><input name="owner" placeholder="Responsible" aria-label="Responsible" required><input name="due" type="date" aria-label="Due date" required>${btn("Add action", null, { type: "submit" })}<div class="err" data-err></div></form>` : ""}
+`, acts.length > 0)}
+      ${mn.updatedBy ? `<div class="hint">Last saved by ${esc(ctx.name(mn.updatedBy))} at ${fmtDateTime(mn.updatedAt)} · revision ${mn.rev || 1}</div>` : ""}
     </div>` : ""}
   </article>`;
+}
+
+/** The full request file shown in the meeting: facts, request text, documents, history and open follow-up. */
+function itemDossier(ctx, m, it) {
+  const prior = meetingsOf(ctx, it).filter(x => x.id !== m.id && (x.date || "") < (m.date || "")).reverse();
+  const docs = (it.attachments || []).filter(a => (a.kind || "request") === "request");
+  const openActs = actionsArr(ctx).filter(a => a.itemId === it.id && a.meetingId !== m.id && isActionOpen(a));
+  const f = (l, v) => `<div><dt>${l}</dt><dd>${v || "—"}</dd></div>`;
+  return `<div class="dossier-b">
+    <dl class="dossier-facts">
+      ${f("Department", esc(it.dept))}${f("Category", `${esc(it.category)}${it.sub ? `<div class="hint">${esc(it.sub)}</div>` : ""}`)}${f("Responsible", esc(it.owner))}
+      ${f("Positions requested", it.hcRequested != null && it.hcRequested !== "" ? `<b class="big">${esc(it.hcRequested)}</b>` : "")}${f("Grade", esc(it.grade))}${f("Budget", esc(it.budgeted))}
+      ${f("Annual cost", it.annualCost != null && it.annualCost !== "" ? esc(fmtOMR(it.annualCost)) : "")}${f("Effective date", it.effectiveDate ? fmtDate(it.effectiveDate) : "")}${f("Submitted", `${fmtDate(it.createdAt)}${it.requestKey ? '<div class="hint">via department request</div>' : ""}`)}
+    </dl>
+    <div class="dossier-sec"><span class="lbl">Request and justification</span><p class="pre dossier-text">${esc(it.request || "—")}</p></div>
+    <div class="dossier-cols">
+      <div class="dossier-sec"><span class="lbl">Supporting documents (${docs.length})</span>${docs.length ? `<ul class="docs">${docs.map(a => `<li>${icon("items")}<a href="${esc(fileUrl(a.id))}" target="_blank" rel="noopener">${esc(a.name)}</a><span class="hint">${esc(fmtSize(a.size || 0))} · added ${fmtDate(a.at)}</span></li>`).join("")}</ul>` : `<p class="empty">None attached. The department can email slides to the secretaries, who attach them as PDF.</p>`}</div>
+      <div class="dossier-sec"><span class="lbl">Earlier committee decisions (${prior.length})</span>${prior.length ? `<ul class="history">${prior.map(p => { const pm = ctx.d.minutes[`${p.id}__${it.id}`] || {}; return `<li><div><b>${fmtDate(p.date)}</b> <span class="hint">${esc(p.ref)}</span> ${pm.outcome ? badge(pm.outcome, outcomeTone(pm.outcome)) : ""}</div><p>${esc(pm.decision || "No decision recorded")}</p></li>`; }).join("")}</ul>` : `<p class="empty">First time at the committee.</p>`}</div>
+    </div>
+    ${openActs.length ? `<div class="dossier-sec"><span class="lbl">Open follow-up from earlier meetings (${openActs.length})</span><ul class="history">${openActs.map(a => `<li><div>${actionBadge(a, ctx.today)} <b>${esc(a.text)}</b></div><p class="hint">${esc(a.owner)} · due ${fmtDate(a.due)}</p></li>`).join("")}</ul></div>` : ""}
+  </div>`;
 }
 
 export function minutesDocument(ctx, m, snap) {

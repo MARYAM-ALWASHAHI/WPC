@@ -7,7 +7,7 @@ import { state, connect, onChange, saveDoc, nextRef, newId, audit, writeSignatur
 import { esc, icon, toast, openPanel, closePanel, panelOpen, confirmDialog, readForm, msg, btn, panelHead } from "./ui.js";
 import * as V from "./views.js";
 import * as R from "./reports.js";
-import { presentHTML, buildPdf } from "./present.js";
+import { presentHTML, buildPdf, buildMinutesPdf, buildReportPdf } from "./present.js";
 
 /* ---------- UI state (per viewer, not shared) ---------- */
 const TABLE = (sort, dir = "asc") => ({ sort, dir, page: 1, size: 25 });
@@ -251,7 +251,7 @@ function minutesWord(m, snap, draft) {
   const list = a => Object.entries(att).filter(([, s]) => s === a).map(([u]) => esc(n(u))).join(", ") || "—";
   const sigRows = draft ? "" : (() => { const s = D.signatureState(m, state.data.sigs); const chair = m.chairman ? D.sigFor(m, m.chairman, state.data.sigs, "chairman") : null;
     return `<h2>Signatures on v${m.version}</h2><table><tr><th>Name</th><th>Role</th><th>Status</th><th>Date</th></tr>${s.rows.map(r => `<tr><td>${esc(n(r.user))}</td><td>Member</td><td>${r.sig ? (r.sig.status === "signed" ? "Signed" : "Correction requested") : "Pending"}</td><td>${r.sig ? esc(new Date(r.sig.at).toLocaleString("en-GB")) : ""}</td></tr>`).join("")}${m.chairman ? `<tr><td>${esc(n(m.chairman))}</td><td>Chairman</td><td>${chair ? (chair.status === "approved" ? "Approved" : "Correction requested") : "Pending"}</td><td>${chair ? esc(new Date(chair.at).toLocaleString("en-GB")) : ""}</td></tr>` : ""}</table><p class="small">Sign-off recorded in WPC Hub. Not a qualified electronic signature.</p>`; })();
-  const facts = x => [x.hcRequested != null && x.hcRequested !== "" ? `${x.hcRequested} position(s) requested` : "", x.grade ? (/^grade\b/i.test(x.grade) ? x.grade : `Grade ${x.grade}`) : "", x.budgeted || "", x.effectiveDate ? `Effective ${x.effectiveDate}` : ""].filter(Boolean).map(esc).join(" · ");
+  const facts = x => [x.hcRequested != null && x.hcRequested !== "" ? `${x.hcRequested} position(s) requested` : "", x.grade ? (/^grade\b/i.test(x.grade) ? x.grade : `Grade ${x.grade}`) : "", x.budgeted || "", x.annualCost != null && x.annualCost !== "" ? `OMR ${Number(x.annualCost).toLocaleString("en-GB")} a year` : "", x.effectiveDate ? `Effective ${x.effectiveDate}` : "", x.owner ? `Responsible: ${x.owner}` : ""].filter(Boolean).map(esc).join(" · ");
   return `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>${esc(m.title)}</title>
 <style>body{font-family:Arial,sans-serif;font-size:10.5pt}h1{font-size:15pt;color:#1F3A5F}h2{font-size:12pt;color:#1F3A5F;margin-top:14pt}table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:4pt;vertical-align:top;text-align:left}th{background:#E8EDF2}.small{font-size:8.5pt;color:#555}</style></head><body>
 <p class="small">Workforce Planning Committee · Minutes of meeting${draft ? " · DRAFT, not circulated" : ` · Version ${snap.v}`}</p>
@@ -259,7 +259,7 @@ function minutesWord(m, snap, draft) {
 <table><tr><th>Reference</th><td>${esc(m.ref)}</td><th>Date</th><td>${esc(m.date || "")} ${esc(snap.time || m.time || "")}</td></tr><tr><th>Location</th><td>${esc(snap.location || m.location || "—")}</td><th>Chairman</th><td>${m.chairman ? esc(n(m.chairman)) : "—"}</td></tr>
 <tr><th>Present</th><td colspan="3">${list("Present")}</td></tr><tr><th>Apologies</th><td colspan="3">${list("Apology")}</td></tr><tr><th>Absent</th><td colspan="3">${list("Absent")}</td></tr></table>
 <h2>Agenda items</h2><table><tr><th>#</th><th>Item and request</th><th>Discussion</th><th>Outcome and decision</th><th>Actions</th></tr>
-${snap.items.map((x, i) => `<tr><td>${i + 1}</td><td><b>${esc(x.ref)}</b> ${esc(x.title)}<br><span class="small">${esc(x.category)} · ${esc(x.dept)}${facts(x) ? ` · ${facts(x)}` : ""}</span><br>${esc(x.request)}</td><td>${esc(x.discussion || "—")}</td><td><b>${esc(x.outcome || "—")}</b>${x.hcApproved != null && x.hcApproved !== "" ? ` (${esc(x.hcApproved)} approved)` : ""}<br>${esc(x.decision || "")}</td><td>${x.actions.map(a => `${esc(a.text)} <span class="small">(${esc(a.owner)}, due ${esc(a.due)})</span>`).join("<br>") || "—"}</td></tr>`).join("")}</table>
+${snap.items.map((x, i) => `<tr><td>${i + 1}</td><td><b>${esc(x.ref)}</b> ${esc(x.title)}<br><span class="small">${esc(x.category)}${x.sub ? ` · ${esc(x.sub)}` : ""} · ${esc(x.dept)}${facts(x) ? ` · ${facts(x)}` : ""}</span><br><br>${esc(x.request)}</td><td>${esc(x.discussion || "—")}</td><td><b>${esc(x.outcome || "—")}</b>${x.hcApproved != null && x.hcApproved !== "" ? ` (${esc(x.hcApproved)} approved)` : ""}<br>${esc(x.decision || "")}</td><td>${x.actions.map(a => `${esc(a.text)} <span class="small">(${esc(a.owner)}, due ${esc(a.due)})</span>`).join("<br>") || "—"}</td></tr>`).join("")}</table>
 ${sigRows}</body></html>`;
 }
 
@@ -606,6 +606,18 @@ Object.assign(COMMANDS, {
     const m = state.data.meetings[f.dataset.id]; audit("meeting", m.id, "Prepared email to members", f.subject.value, m.ref);
   },
   "report.quick": el => { ui.report = R.quickPeriod(el.dataset.period, D.isoToday()); render(); },
+  "minutes.pdf": async el => {
+    const m = state.data.meetings[el.dataset.id];
+    const draft = !m.snapshot;
+    const snap = m.snapshot || D.buildSnapshot({ ...m, version: (m.version || 0) }, { items: state.data.items, minutes: state.data.minutes, actions: state.data.actions }, new Date().toISOString());
+    const when = x => (x ? new Date(x.at).toLocaleString("en-GB") : "");
+    const s = D.signatureState(m, state.data.sigs);
+    const sigRows = s.rows.map(r => [name(r.user), "Member", r.sig ? (r.sig.status === "signed" ? "Signed" : "Correction requested") : "Pending", when(r.sig)]);
+    const ch = m.chairman ? D.sigFor(m, m.chairman, state.data.sigs, "chairman") : null;
+    const chairSig = m.chairman ? [name(m.chairman), "Chairman", ch ? (ch.status === "approved" ? "Approved" : "Correction requested") : "Pending", when(ch)] : null;
+    await savePdf(() => buildMinutesPdf({ m, snap, draft, name, sigRows, chairSig }), `${m.ref}-minutes-${draft ? "draft" : `v${m.version}`}.pdf`, () => audit("meeting", m.id, "Downloaded minutes (PDF)", draft ? "draft" : `v${m.version}`, m.ref));
+  },
+  "report.pdf": async () => { const c = ctx(); const r = R.reportData(c, ui.report.from, ui.report.to); await savePdf(() => buildReportPdf({ r, name }), `wpc-report-${r.from}-to-${r.to}.pdf`); },
   "report.word": async () => { const f = R.reportWord(ctx()); await saveFile(f.filename, f.data); },
   "report.csv": async el => { const f = R.reportCsv(ctx(), el.dataset.kind); await saveFile(f.filename, f.data); },
 });
@@ -662,10 +674,11 @@ Please review the requests in WPC Hub before the meeting.${V.safeUrl(m.attendanc
 Regards,
 ${state.session.me?.name || "WPC Secretary"}`;
   const to = Object.values(emails).join("; ");
+  const owa = (t, sub, b) => `https://outlook.office.com/mail/deeplink/compose?to=${encodeURIComponent(t.split(/[;,\s]+/).filter(Boolean).join(";"))}&subject=${encodeURIComponent(sub)}&body=${encodeURIComponent(b)}`;
   const mailto = `mailto:${encodeURIComponent(Object.values(emails).join(","))}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   openPanel(`${panelHead("Email committee members", `${esc(m.ref)} · ${items.length} accepted items`)}
   <div class="panel-body">
-    ${msg("info", "WPC Hub does not send email itself. Open this in your email app, or copy it into Outlook. You can edit everything below first.")}
+    ${msg("info", "<b>Open in Outlook</b> opens a new Outlook email with everything below filled in: check it and press Send there. WPC Hub never sends email on its own.")}
     ${missing.length ? msg("warn", `No email address available for: ${esc(missing.join(", "))}. Add them in Outlook.`) : ""}
     <form class="form" data-form="email.noop" data-id="${esc(m.id)}" novalidate>
       <div class="field wide"><label for="em-to">To</label><textarea id="em-to" name="to" rows="2">${esc(to)}</textarea></div>
@@ -674,12 +687,13 @@ ${state.session.me?.name || "WPC Secretary"}`;
       <div class="form-actions wide">
         ${btn("Copy addresses", "email.copy", { data: { part: "to" } })}
         ${btn("Copy email", "email.copy", { data: { part: "body" } })}
-        <a class="btn primary" id="em-open" href="${esc(mailto)}" target="_blank" rel="noopener">${icon("mail")}Open in email app</a>
+        <a class="btn" id="em-open" href="${esc(mailto)}" target="_blank" rel="noopener">${icon("mail")}Email app</a>
+        <a class="btn primary" id="em-outlook" href="${esc(owa(to, subject, body))}" target="_blank" rel="noopener">${icon("mail")}Open in Outlook</a>
       </div>
-      <p class="hint wide">If “Open in email app” does nothing on your device, use Copy email and paste it into Outlook.</p>
+      <p class="hint wide">Open in Outlook uses Outlook on the web with your company sign-in. Email app opens the mail app on this device. If neither opens, use Copy email and paste it into Outlook.</p>
     </form>
   </div>`, "Email committee members");
   const f = document.querySelector('.panel form[data-form="email.noop"]');
-  const sync = () => { document.getElementById("em-open").href = `mailto:${encodeURIComponent(f.to.value.split(/[;,\s]+/).filter(Boolean).join(","))}?subject=${encodeURIComponent(f.subject.value)}&body=${encodeURIComponent(f.body.value)}`; };
+  const sync = () => { document.getElementById("em-outlook").href = owa(f.to.value, f.subject.value, f.body.value); document.getElementById("em-open").href = `mailto:${encodeURIComponent(f.to.value.split(/[;,\s]+/).filter(Boolean).join(","))}?subject=${encodeURIComponent(f.subject.value)}&body=${encodeURIComponent(f.body.value)}`; };
   f.addEventListener("input", sync);
 }

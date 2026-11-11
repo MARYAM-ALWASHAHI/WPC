@@ -79,9 +79,10 @@
   };
   const downloads = {
     save: async ({ filename, data }) => {
-      const blob = data instanceof Blob ? data : new Blob([data]);
+      const type = { pdf: "application/pdf", doc: "application/msword", csv: "text/csv", json: "application/json" }[filename.split(".").pop()] || "application/octet-stream";
+      const blob = data instanceof Blob ? data : new Blob([data], { type });
       const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob); a.download = filename;
+      a.href = URL.createObjectURL(blob); a.download = filename; a.target = "_blank"; a.rel = "noopener";
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(a.href), 2000);
       return { status: "saved" };

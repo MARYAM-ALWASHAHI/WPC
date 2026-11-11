@@ -325,7 +325,7 @@ export function buildSnapshot(m, ctx, at) {
     items: m.agenda.map(id => ctx.items[id]).filter(Boolean).map(it => {
       const mn = ctx.minutes[`${m.id}__${it.id}`] || {};
       return {
-        id: it.id, ref: it.ref, title: it.title, category: it.category, sub: it.sub || "", dept: it.dept, request: it.request || "",
+        id: it.id, ref: it.ref, title: it.title, category: it.category, sub: it.sub || "", dept: it.dept, owner: it.owner || "", request: it.request || "", annualCost: it.annualCost ?? null,
         hcRequested: it.hcRequested ?? null, grade: it.grade || "", budgeted: it.budgeted || "", effectiveDate: it.effectiveDate || "",
         outcome: mn.outcome || "", hcApproved: mn.hcApproved ?? null,
         discussion: mn.discussion || "", decision: mn.decision || "",
